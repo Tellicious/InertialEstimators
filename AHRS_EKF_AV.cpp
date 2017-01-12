@@ -42,9 +42,9 @@ u(12,1),_A(12,12),_B(12,10),_C_acc(2,12),_C_mag(3,12),_P(12,12),_W(10,10),_R_acc
     _r_vd = AHRS_EKF_AV_VD_NOISE;
     
     //Set Angles
-    Roll=u(0,0);
-    Pitch=u(1,0);
-    Yaw=u(2,0);
+    Roll = u(0,0);
+    Pitch = u(1,0);
+    Yaw = u(2,0);
     
     return;
 }
@@ -203,7 +203,7 @@ void AHRS_EKF_AV::update_accel(float g_x, float g_y, float g_z, float a_x, float
 void AHRS_EKF_AV::update_mag(float m_x, float m_y, float m_z){
     
     //Normalize readings
-    float inv_norm=1.f/sqrtf(m_x * m_x + m_y * m_y + m_z * m_z);
+    float inv_norm=1.f / sqrtf(m_x * m_x + m_y * m_y + m_z * m_z);
     if (isnan(inv_norm)||isinf(inv_norm)){
         inv_norm=1.f;
     }
@@ -291,8 +291,8 @@ void AHRS_EKF_AV::update_vel_xy(float v_x, float v_y, float dt_s){
     //_P=(_P+(~_P))*0.5; //guarantees P to be symmetric
     
     //Set Angles
-    Roll=u(0,0);
-    Pitch=u(1,0);
+    Roll = u(0,0);
+    Pitch = u(1,0);
     
     return;
 }
@@ -339,8 +339,8 @@ void AHRS_EKF_AV::update_vel_z(float v_z, float dt_s){
     
     
     //Set Angles
-    Roll=u(0,0);
-    Pitch=u(1,0);
+    Roll = u(0,0);
+    Pitch = u(1,0);
     
     return;
 }
@@ -398,8 +398,8 @@ void AHRS_EKF_AV::update_vel_ne(float v_n, float v_e, float dt_s){
     //_P=(_P+(~_P))*0.5; //guarantees P to be symmetric
     
     //Set Angles
-    Roll=u(0,0);
-    Pitch=u(1,0);
+    Roll = u(0,0);
+    Pitch = u(1,0);
     
     return;
 }
@@ -438,8 +438,8 @@ void AHRS_EKF_AV::update_vel_d(float v_d, float dt_s){
     //_P=(_P+(~_P))*0.5; //guarantees P to be symmetric
     
     //Set Angles
-    Roll=u(0,0);
-    Pitch=u(1,0);
+    Roll = u(0,0);
+    Pitch = u(1,0);
     
     return;
 }
@@ -453,9 +453,9 @@ void AHRS_EKF_AV::set_starting_values(float Phi_0, float Theta_0, float Psi_0, f
     u(8,0) = incl_0;
     
     //Set Angles
-    Roll=u(0,0);
-    Pitch=u(1,0);
-    Yaw=u(2,0);
+    Roll = u(0,0);
+    Pitch = u(1,0);
+    Yaw = u(2,0);
     
     return;
 }

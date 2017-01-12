@@ -62,10 +62,10 @@ AHRS_Attitude_SO3::AHRS_Attitude_SO3(float loop_time_s, float Kp, float Ki){
     _loop_time_s = loop_time_s;
     
     // Initialize quaternion
-    q0 = 1;
-    q1 = 0;
-    q2 = 0;
-    q3 = 0;
+    q0 = 1f;
+    q1 = 0f;
+    q2 = 0f;
+    q3 = 0f;
     
     // Auxiliary variables to avoid repeated arithmetic
     _q0q0 = q0 * q0;

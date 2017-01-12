@@ -27,8 +27,8 @@ u(7,1),_A(7,7),_B(7,6),_C(2,7),_P(7,7),_W(6,6),_R(2,2),_M(2,2),_K(7,2){
     _r_vd = IMU_EKF_AV_VD_NOISE;
     
     //Set Angles
-    Roll=u(0,0);
-    Pitch=u(1,0);
+    Roll = u(0,0);
+    Pitch = u(1,0);
     return;
 }
 
@@ -53,14 +53,14 @@ void IMU_EKF_AV::prediction(float g_x, float g_y, float g_z, float a_z){
     _A(1,0) = -_loop_time_s * tmp1;
     _A(1,1) = 1.0f;
     _A(2,1) = -_loop_time_s * _g * ctheta;
-    _A(2,2) = 1.0f-_loop_time_s * u(5,0);
+    _A(2,2) = 1.0f - _loop_time_s * u(5,0);
     _A(2,3) = _loop_time_s * g_z;
     _A(2,4) = -_loop_time_s * g_y;
     _A(2,5) = -_loop_time_s * u(2,0);
     _A(3,0) = _loop_time_s * _g * cphi * ctheta;
     _A(3,1) = -_loop_time_s * _g * sphi * stheta;
     _A(3,2) = -_loop_time_s * g_z;
-    _A(3,3) = 1.0f-_loop_time_s * u(5,0);
+    _A(3,3) = 1.0f - _loop_time_s * u(5,0);
     _A(3,4) = _loop_time_s * g_x;
     _A(3,5) = -_loop_time_s * u(3,0);
     _A(4,0) = _loop_time_s * (u(6,0) - _g) * ctheta * sphi;
@@ -140,8 +140,8 @@ void IMU_EKF_AV::update(float g_x, float g_y, float g_z, float a_x, float a_y){
     //_P=(_P+(~_P))*0.5; //guarantees P to be symmetric
     
     //Set Angles
-    Roll=u(0,0);
-    Pitch=u(1,0);
+    Roll = u(0,0);
+    Pitch = u(1,0);
 
     return;
 }
@@ -177,8 +177,8 @@ void IMU_EKF_AV::update_vel_xy(float v_x, float v_y, float dt_s){
     //_P=(_P+(~_P))*0.5; //guarantees P to be symmetric
     
     //Set Angles
-    Roll=u(0,0);
-    Pitch=u(1,0);
+    Roll = u(0,0);
+    Pitch = u(1,0);
 
     return;
 }
@@ -220,8 +220,8 @@ void IMU_EKF_AV::update_vel_z(float v_z, float dt_s){
     
     
     //Set Angles
-    Roll=u(0,0);
-    Pitch=u(1,0);
+    Roll = u(0,0);
+    Pitch = u(1,0);
     
     return;
 }
@@ -259,8 +259,8 @@ void IMU_EKF_AV::update_vel_d(float v_d, float dt_s){
     //_P=(_P+(~_P))*0.5; //guarantees P to be symmetric
     
     //Set Angles
-    Roll=u(0,0);
-    Pitch=u(1,0);
+    Roll = u(0,0);
+    Pitch = u(1,0);
     
     return;
 }

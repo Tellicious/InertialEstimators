@@ -273,18 +273,18 @@ void AHRS_Attitude_EKF::update_mag(float m_x, float m_y, float m_z){
 void AHRS_Attitude_EKF::euler_angles(){
     
     //Normalize accelerometer estimate
-    float inv_norm = 1.f / sqrt(u(6,0) * u(6,0) + u(7,0) * u(7,0) + u(8,0) * u(8,0));
+    float inv_norm = 1.f / sqrtf(u(6,0) * u(6,0) + u(7,0) * u(7,0) + u(8,0) * u(8,0));
     if (isnan(inv_norm)||isinf(inv_norm)){
-        inv_norm=1.f/_g_val;
+        inv_norm = 1.f/_g_val;
     }
     float ax = u(6,0) * inv_norm;
     float ay = u(7,0) * inv_norm;
     float az = u(8,0) * inv_norm;
     
     //Normalize magnetometer estimate
-    inv_norm = 1.f / sqrt(u(9,0) * u(9,0) + u(10,0) * u(10,0) + u(11,0) * u(11,0));
+    inv_norm = 1.f / sqrtf(u(9,0) * u(9,0) + u(10,0) * u(10,0) + u(11,0) * u(11,0));
     if (isnan(inv_norm)||isinf(inv_norm)){
-        inv_norm=1.f;
+        inv_norm = 1.f;
     }
     float mx = u(9,0) * inv_norm;
     float my = u(10,0) * inv_norm;
@@ -293,13 +293,13 @@ void AHRS_Attitude_EKF::euler_angles(){
     //Compute Euler angles
     Roll = atan2f(-ay,-az);
     Pitch = asinf(ax);
-    float sphi = sin(Roll);
+    float sphi = sinf(Roll);
     float cphi = cosf(Roll);
     float steta = ax;
     float cteta = cosf(Pitch);
     float Yh = my * cphi  - mz * sphi ;
     float Xh = mx * cteta + (my * sphi + mz * cphi) * steta;
-    Yaw = atan2(-Yh, Xh);
+    Yaw = atan2f(-Yh, Xh);
     return;
 }
 

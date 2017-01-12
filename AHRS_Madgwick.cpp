@@ -9,20 +9,20 @@
 //=====================================Constructor===========================================//
 AHRS_Madgwick::AHRS_Madgwick(float gyro_error, float gyro_drift){
 	// Initial quaternion
-	q1=1;
-	q2=0;
-	q3=0;
-	q4=0;
+	q1 = 1;
+	q2 = 0;
+	q3 = 0;
+	q4 = 0;
 	// Initial magnetic field estimated direction
-	_b_x=1;
-	_b_z=0;
+	_b_x = 1;
+	_b_z = 0;
 	// Initial gyroscope estimated biases
-	_w_bx=0;
-	_w_by=0;
-	_w_bz=0;
+	_w_bx = 0;
+	_w_by = 0;
+	_w_bz = 0;
 	// filter parameters
-	_beta=sqrtf(3.0f*0.25f)*gyro_error;
-	_zeta=sqrtf(3.0f*0.35f)*gyro_drift;
+	_beta = sqrtf(3.0f * 0.25f) * gyro_error;
+	_zeta = sqrtf(3.0f * 0.35f) * gyro_drift;
 }
 
 //====================================Public Members==========================================//
@@ -72,18 +72,18 @@ void AHRS_Madgwick::compute(float g_x, float g_y, float g_z, float a_x, float a_
 	float twom_z = 2.0f * m_z;
 
 	// normalize the accelerometer measurement 
-	inv_norm = -1.f/sqrtf(a_x * a_x + a_y * a_y + a_z * a_z);
+	inv_norm = -1.f / sqrtf(a_x * a_x + a_y * a_y + a_z * a_z);
     if (isnan(inv_norm)||isinf(inv_norm)){
-        inv_norm=1.f;
+        inv_norm = 1.f;
     }
 	a_x *= inv_norm;
 	a_y *= inv_norm;
 	a_z *= inv_norm;
     
 	// normalize the magnetometer measurement
-	inv_norm = 1.f/sqrtf(m_x * m_x + m_y * m_y + m_z * m_z);
+	inv_norm = 1.f / sqrtf(m_x * m_x + m_y * m_y + m_z * m_z);
     if (isnan(inv_norm)||isinf(inv_norm)){
-        inv_norm=1.f;
+        inv_norm = 1.f;
     }
 	m_x *= inv_norm;
 	m_y *= inv_norm;
@@ -122,9 +122,9 @@ void AHRS_Madgwick::compute(float g_x, float g_y, float g_z, float a_x, float a_
 	SEqHatDot_4 = J_14or21 * f_1 + J_11or24 * f_2 - J_44 * f_4 - J_54 * f_5 + J_64 * f_6;
 
 	// normalise the gradient to estimate direction of the gyroscope error
-	inv_norm = 1.f/sqrtf(SEqHatDot_1 * SEqHatDot_1 + SEqHatDot_2 * SEqHatDot_2 + SEqHatDot_3 * SEqHatDot_3 + SEqHatDot_4 * SEqHatDot_4);
+	inv_norm = 1.f / sqrtf(SEqHatDot_1 * SEqHatDot_1 + SEqHatDot_2 * SEqHatDot_2 + SEqHatDot_3 * SEqHatDot_3 + SEqHatDot_4 * SEqHatDot_4);
     if (isnan(inv_norm)||isinf(inv_norm)){
-        inv_norm=1.f;
+        inv_norm = 1.f;
     }
 	SEqHatDot_1 = SEqHatDot_1 * inv_norm;
 	SEqHatDot_2 = SEqHatDot_2 * inv_norm;
@@ -157,9 +157,9 @@ void AHRS_Madgwick::compute(float g_x, float g_y, float g_z, float a_x, float a_
 	q4 += (SEqDot_omega_4 - (_beta * SEqHatDot_4)) * loop_time_s;
 
 	// normalise quaternion
-	inv_norm = 1.f/sqrtf((q1 * q1 + q2 * q2 + q3 * q3 + q4 * q4));
+	inv_norm = 1.f / sqrtf((q1 * q1 + q2 * q2 + q3 * q3 + q4 * q4));
     if (isnan(inv_norm)||isinf(inv_norm)){
-        inv_norm=1.f;
+        inv_norm = 1.f;
     }
 	q1 *= inv_norm;
 	q2 *= inv_norm;

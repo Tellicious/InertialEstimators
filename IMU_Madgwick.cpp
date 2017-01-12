@@ -9,12 +9,12 @@
 //=====================================Constructor===========================================//
 IMU_Madgwick::IMU_Madgwick(float gyro_error){
 	// Initial quaternion
-	q1=1;
-	q2=0;
-	q3=0;
-	q4=0;
+	q1 = 1f;
+	q2 = 0f;
+	q3 = 0f;
+	q4 = 0f;
 	// filter parameters
-	_beta=sqrtf(3.0f*0.25f)*gyro_error;
+	_beta = sqrtf(3.0f * 0.25f) * gyro_error;
 }
 
 //====================================Public Members==========================================//
@@ -37,9 +37,9 @@ void IMU_Madgwick::compute(float g_x, float g_y, float g_z, float a_x, float a_y
 	float twoSEq_3 = 2.0f * q3;
 
 	// normalize the accelerometer measurement 
-	inv_norm = -1.f/sqrtf(a_x * a_x + a_y * a_y + a_z * a_z);
+	inv_norm = -1.f / sqrtf(a_x * a_x + a_y * a_y + a_z * a_z);
     if (isnan(inv_norm)||isinf(inv_norm)){
-        inv_norm=1.f;
+        inv_norm = 1.f;
     }
 	a_x *= inv_norm;
 	a_y *= inv_norm;
@@ -63,9 +63,9 @@ void IMU_Madgwick::compute(float g_x, float g_y, float g_z, float a_x, float a_y
 	SEqHatDot_4 = J_14or21 * f_1 + J_11or24 * f_2;
 
 	// normalise the gradient to estimate direction of the gyroscope error
-	inv_norm = 1.f/sqrtf(SEqHatDot_1 * SEqHatDot_1 + SEqHatDot_2 * SEqHatDot_2 + SEqHatDot_3 * SEqHatDot_3 + SEqHatDot_4 * SEqHatDot_4);
+	inv_norm = 1.f / sqrtf(SEqHatDot_1 * SEqHatDot_1 + SEqHatDot_2 * SEqHatDot_2 + SEqHatDot_3 * SEqHatDot_3 + SEqHatDot_4 * SEqHatDot_4);
     if (isnan(inv_norm)||isinf(inv_norm)){
-        inv_norm=1.f;
+        inv_norm = 1.f;
     }
 	SEqHatDot_1 *= inv_norm;
 	SEqHatDot_2 *= inv_norm;
@@ -85,9 +85,9 @@ void IMU_Madgwick::compute(float g_x, float g_y, float g_z, float a_x, float a_y
 	q4 += (SEqDot_omega_4 - (_beta * SEqHatDot_4)) * loop_time_s;
 
 	// normalise quaternion
-	inv_norm = 1.f/sqrtf(q1 * q1 + q2 * q2 + q3 * q3 + q4 * q4);
+	inv_norm = 1.f / sqrtf(q1 * q1 + q2 * q2 + q3 * q3 + q4 * q4);
     if (isnan(inv_norm)||isinf(inv_norm)){
-        inv_norm=1.f;
+        inv_norm = 1.f;
     }
 	q1 *= inv_norm;
 	q2 *= inv_norm;
