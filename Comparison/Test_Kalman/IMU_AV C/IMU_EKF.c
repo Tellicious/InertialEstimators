@@ -23,7 +23,7 @@ Matrix _A;  //state matrix
 Matrix _B;  //input matrix
 Matrix _C;  //output matrix
 Matrix _P;  //errors expected value matrix
-Matrix _W; //gyro and acc_z noises covariance matrix (g_x, g_y, g_z, a_z, c_damp, b_az, incl, b_gx, b_gy, b_gz)
+Matrix _W; //gyro and acc_z noises covariance matrix (g_x, g_y, g_z, a_z, c_damp, b_az)
 Matrix _R;  //acc_x and acc_y noises covariance matrix
 Matrix _M;  //temporary matrix
 Matrix _K;  //gain matrix
