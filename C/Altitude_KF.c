@@ -40,17 +40,6 @@ void alt_KF_prediction (void){
 	return;
 }
 
-
-
-
-
-
-
-
-
-
-
-
 void alt_KF_update_baro (void){
 	float alt_delta = 44330.76923 * (1 - powf((INSData.pressure * NAVData.inv_referencePressure), 0.190266436)) - alt_KF.h;
 	alt_KF.h += alt_KF.m_hh * alt_delta;
