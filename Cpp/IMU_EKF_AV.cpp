@@ -50,21 +50,21 @@ void IMU_EKF_AV::prediction(float g_x, float g_y, float g_z, float a_z){
     //_A.zeros(); //zeros or not?
     _A(0,0) = 1.0f + _loop_time_s * tmp2 * ttheta;
     _A(0,1) = _loop_time_s * tmp1 * inv_ctheta * inv_ctheta;
-    _A(1,0) = -_loop_time_s * tmp1;
+    _A(1,0) = - _loop_time_s * tmp1;
     _A(1,1) = 1.0f;
-    _A(2,1) = -_loop_time_s * _g * ctheta;
+    _A(2,1) = - _loop_time_s * _g * ctheta;
     _A(2,2) = 1.0f - _loop_time_s * u(5,0);
     _A(2,3) = _loop_time_s * g_z;
-    _A(2,4) = -_loop_time_s * g_y;
-    _A(2,5) = -_loop_time_s * u(2,0);
+    _A(2,4) = - _loop_time_s * g_y;
+    _A(2,5) = - _loop_time_s * u(2,0);
     _A(3,0) = _loop_time_s * _g * cphi * ctheta;
-    _A(3,1) = -_loop_time_s * _g * sphi * stheta;
-    _A(3,2) = -_loop_time_s * g_z;
+    _A(3,1) = - _loop_time_s * _g * sphi * stheta;
+    _A(3,2) = - _loop_time_s * g_z;
     _A(3,3) = 1.0f - _loop_time_s * u(5,0);
     _A(3,4) = _loop_time_s * g_x;
-    _A(3,5) = -_loop_time_s * u(3,0);
-    _A(4,0) = _loop_time_s * (u(6,0) - _g) * ctheta * sphi;
-    _A(4,1) = _loop_time_s * (u(6,0) - _g) * cphi * stheta;
+    _A(3,5) = - _loop_time_s * u(3,0);
+    _A(4,0) = - _loop_time_s * _g * ctheta * sphi;
+    _A(4,1) = - _loop_time_s * _g * cphi * stheta;
     _A(4,4) = 1.0f;
     _A(4,6) = -_loop_time_s * cphi * ctheta;
     _A(5,5) = 1.0f;
@@ -98,7 +98,7 @@ void IMU_EKF_AV::prediction(float g_x, float g_y, float g_z, float a_z){
     float delta_u3 = _loop_time_s * (u(4,0) * g_x - u(2,0) * g_z - u(5,0) * u(3,0) + _g * sphi * ctheta);
     u(2,0) += delta_u2;
     u(3,0) += delta_u3;
-    u(4,0) += _loop_time_s * (a_z + (_g - u(6,0)) * cphi * ctheta);
+    u(4,0) += _loop_time_s * (a_z - u(6,0) + _g * cphi * ctheta);
     /*u(5,0) += 0;
      u(6,0) += 0;*/
     

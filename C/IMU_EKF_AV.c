@@ -118,23 +118,23 @@ void IMU_EKF_prediction(float g_x, float g_y, float g_z, float a_z)
   //_A.zeros(); //zeros or not?
   ELEM(_A, 0, 0) = 1.0f + _loop_time_s * tmp2 * ttheta;
   ELEM(_A, 0, 1) = _loop_time_s * tmp1 * inv_ctheta * inv_ctheta;
-  ELEM(_A, 1, 0) = -_loop_time_s * tmp1;
+  ELEM(_A, 1, 0) = - _loop_time_s * tmp1;
   ELEM(_A, 1, 1) = 1.0f;
-  ELEM(_A, 2, 1) = -_loop_time_s * _g * ctheta;
+  ELEM(_A, 2, 1) = - _loop_time_s * _g * ctheta;
   ELEM(_A, 2, 2) = 1.0f - _loop_time_s * ELEM(IMU_EKF_u, 5, 0);
   ELEM(_A, 2, 3) = _loop_time_s * g_z;
-  ELEM(_A, 2, 4) = -_loop_time_s * g_y;
-  ELEM(_A, 2, 5) = -_loop_time_s * ELEM(IMU_EKF_u, 2, 0);
+  ELEM(_A, 2, 4) = - _loop_time_s * g_y;
+  ELEM(_A, 2, 5) = - _loop_time_s * ELEM(IMU_EKF_u, 2, 0);
   ELEM(_A, 3, 0) = _loop_time_s * _g * cphi * ctheta;
-  ELEM(_A, 3, 1) = -_loop_time_s * _g * sphi * stheta;
-  ELEM(_A, 3, 2) = -_loop_time_s * g_z;
+  ELEM(_A, 3, 1) = - _loop_time_s * _g * sphi * stheta;
+  ELEM(_A, 3, 2) = - _loop_time_s * g_z;
   ELEM(_A, 3, 3) = 1.0f - _loop_time_s * ELEM(IMU_EKF_u, 5, 0);
   ELEM(_A, 3, 4) = _loop_time_s * g_x;
-  ELEM(_A, 3, 5) = -_loop_time_s * ELEM(IMU_EKF_u, 3, 0);
-  ELEM(_A, 4, 0) = _loop_time_s * (ELEM(IMU_EKF_u, 6, 0) - _g) * ctheta * sphi;
-  ELEM(_A, 4, 1) = _loop_time_s * (ELEM(IMU_EKF_u, 6, 0) - _g) * cphi * stheta;
+  ELEM(_A, 3, 5) = - _loop_time_s * ELEM(IMU_EKF_u, 3, 0);
+  ELEM(_A, 4, 0) = - _loop_time_s * _g * ctheta * sphi;
+  ELEM(_A, 4, 1) = - _loop_time_s * _g * cphi * stheta;
   ELEM(_A, 4, 4) = 1.0f;
-  ELEM(_A, 4, 6) = -_loop_time_s * cphi * ctheta;
+  ELEM(_A, 4, 6) = - _loop_time_s;
   ELEM(_A, 5, 5) = 1.0f;
   ELEM(_A, 6, 6) = 1.0f;
 
@@ -170,7 +170,7 @@ void IMU_EKF_prediction(float g_x, float g_y, float g_z, float a_z)
   delta_u3 = _loop_time_s * (ELEM(IMU_EKF_u, 4, 0) * g_x - ELEM(IMU_EKF_u, 2, 0) * g_z - ELEM(IMU_EKF_u, 5, 0) * ELEM(IMU_EKF_u, 3, 0) + _g * sphi * ctheta);
   ELEM(IMU_EKF_u, 2, 0) += delta_u2;
   ELEM(IMU_EKF_u, 3, 0) += delta_u3;
-  ELEM(IMU_EKF_u, 4, 0) += _loop_time_s * (a_z + (_g - ELEM(IMU_EKF_u, 6, 0)) * cphi * ctheta);
+  ELEM(IMU_EKF_u, 4, 0) += _loop_time_s * (a_z  - ELEM(IMU_EKF_u, 6, 0) + _g * cphi * ctheta);
   /*ELEM(IMU_EKF_u, 5,0) += 0;
    ELEM(IMU_EKF_u, 6,0) += 0;*/
 
