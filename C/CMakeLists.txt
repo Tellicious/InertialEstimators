@@ -14,6 +14,7 @@ set (libName inertialEstimators)
 set(${libName}_src
     ${CMAKE_CURRENT_LIST_DIR}/src/altitudeKF.c
     ${CMAKE_CURRENT_LIST_DIR}/src/AHRS_EKF.c
+    ${CMAKE_CURRENT_LIST_DIR}/src/AHRS_Madgwick.c
     ${CMAKE_CURRENT_LIST_DIR}/src/IMU_EKF.c
     ${CMAKE_CURRENT_LIST_DIR}/src/IMU_Madgwick.c
     ${CMAKE_CURRENT_LIST_DIR}/src/IMU_quaternionST.c
