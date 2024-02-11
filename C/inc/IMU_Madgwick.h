@@ -45,7 +45,8 @@ extern "C" {
 #include "main.h"
 
 /* Configuration -------------------------------------------------------------*/
-#define configIMU_MADGWICK_GYRO_ERROR 0.0872664626f //gyroscope supposed measurement error (rad/s)
+/* Gyroscope supposed measurement error (rad/s) */
+#define configIMU_MADGWICK_GYRO_ERROR 0.075574973510005f //sqrtf(3.0f * 0.25f) * 0.0872664626f
 
 #ifndef configIMU_MADGWICK_LOOP_TIME_S
 #error configIMU_MADGWICK_LOOP_TIME_S must be defined

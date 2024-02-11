@@ -47,12 +47,6 @@ void AHRS_Madgwick_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro, axis3
     /* Initial gyroscope estimated biases */
     static axis3f_t w_b = {0, 0, 0};
     /* Filter parameters */
-    //TODO make constants
-    float beta = 0;
-    beta = sqrtf(3.0f * 0.25f) * configAHRS_MADGWICK_GYRO_ERROR;
-    float zeta = 0;
-    zeta = sqrtf(3.0f * 0.35f) * configAHRS_MADGWICK_GYRO_DRIFT;
-
     float inv_norm;                                                       //inverse of vector norm
     float SEqDot_omega_1, SEqDot_omega_2, SEqDot_omega_3, SEqDot_omega_4; //quaternion rate from gyroscopes elements
     float f_1, f_2, f_3, f_4, f_5, f_6;                                   //objective function elements
@@ -162,9 +156,9 @@ void AHRS_Madgwick_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro, axis3
     w_err.z = twoSEq_1 * SEqHatDot_4 - twoSEq_2 * SEqHatDot_3 + twoSEq_3 * SEqHatDot_2 - twoSEq_4 * SEqHatDot_1;
 
     // compute and remove the gyroscope biases
-    w_b.x += w_err.x * configAHRS_MADGWICK_LOOP_TIME_S * zeta;
-    w_b.y += w_err.y * configAHRS_MADGWICK_LOOP_TIME_S * zeta;
-    w_b.z += w_err.z * configAHRS_MADGWICK_LOOP_TIME_S * zeta;
+    w_b.x += w_err.x * configAHRS_MADGWICK_LOOP_TIME_S * configAHRS_MADGWICK_GYRO_DRIFT;
+    w_b.y += w_err.y * configAHRS_MADGWICK_LOOP_TIME_S * configAHRS_MADGWICK_GYRO_DRIFT;
+    w_b.z += w_err.z * configAHRS_MADGWICK_LOOP_TIME_S * configAHRS_MADGWICK_GYRO_DRIFT;
     gyro.x -= w_b.x;
     gyro.y -= w_b.y;
     gyro.z -= w_b.z;
@@ -176,10 +170,10 @@ void AHRS_Madgwick_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro, axis3
     SEqDot_omega_4 = halfSEq_1 * gyro.z + halfSEq_2 * gyro.y - halfSEq_3 * gyro.x;
 
     // compute then integrate the estimated quaternion rate
-    q.q0 += (SEqDot_omega_1 - (beta * SEqHatDot_1)) * configAHRS_MADGWICK_LOOP_TIME_S;
-    q.q1 += (SEqDot_omega_2 - (beta * SEqHatDot_2)) * configAHRS_MADGWICK_LOOP_TIME_S;
-    q.q2 += (SEqDot_omega_3 - (beta * SEqHatDot_3)) * configAHRS_MADGWICK_LOOP_TIME_S;
-    q.q3 += (SEqDot_omega_4 - (beta * SEqHatDot_4)) * configAHRS_MADGWICK_LOOP_TIME_S;
+    q.q0 += (SEqDot_omega_1 - (configAHRS_MADGWICK_GYRO_ERROR * SEqHatDot_1)) * configAHRS_MADGWICK_LOOP_TIME_S;
+    q.q1 += (SEqDot_omega_2 - (configAHRS_MADGWICK_GYRO_ERROR * SEqHatDot_2)) * configAHRS_MADGWICK_LOOP_TIME_S;
+    q.q2 += (SEqDot_omega_3 - (configAHRS_MADGWICK_GYRO_ERROR * SEqHatDot_3)) * configAHRS_MADGWICK_LOOP_TIME_S;
+    q.q3 += (SEqDot_omega_4 - (configAHRS_MADGWICK_GYRO_ERROR * SEqHatDot_4)) * configAHRS_MADGWICK_LOOP_TIME_S;
 
     /* Normalise quaternion */
     quaternionNorm(&q);
@@ -207,7 +201,6 @@ void AHRS_Madgwick_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro, axis3
     b_z = h.z;
 
     /* Convert quaterionion to Euler angles */
-    //TODO check if possible to use quaternionToEuler(&q, angles);
     angles->x = atan2f((2.f * (SEq_3SEq_4 + SEq_1SEq_2)), (SEq_1SEq_1 - SEq_2SEq_2 - SEq_3SEq_3 + SEq_4SEq_4));
     angles->y = -asinf((2.f * (SEq_2SEq_4 - SEq_1SEq_3)));
     angles->z = atan2f((2.f * (SEq_2SEq_3 + SEq_1SEq_4)), (SEq_1SEq_1 + SEq_2SEq_2 - SEq_3SEq_3 - SEq_4SEq_4));

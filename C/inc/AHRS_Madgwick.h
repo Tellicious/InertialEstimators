@@ -45,9 +45,11 @@ extern "C" {
 #include "main.h"
 #include "quaternion.h"
 
-/* Includes ------------------------------------------------------------------*/
-#define configAHRS_MADGWICK_GYRO_ERROR 0.0872664626f //gyroscope supposed measurement error (rad/s)
-#define configAHRS_MADGWICK_GYRO_DRIFT 0.0034906585f //gyroscope supposed bias drift (rad/s/s)
+/* Configuration -------------------------------------------------------------*/
+/* Gyroscope supposed measurement error (rad/s) */
+#define configAHRS_MADGWICK_GYRO_ERROR 0.075574973510005f //sqrtf(3.0f * 0.25f) * 0.0872664626f
+/* Gyroscope supposed bias drift (rad/s/s) */
+#define configAHRS_MADGWICK_GYRO_DRIFT 0.003576860579028f //sqrtf(3.0f * 0.35f) * 0.0034906585f
 
 #ifndef configAHRS_MADGWICK_LOOP_TIME_S
 #error configAHRS_MADGWICK_LOOP_TIME_S must be defined

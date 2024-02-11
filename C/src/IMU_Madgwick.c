@@ -42,9 +42,6 @@
 
 void IMU_Madgwick_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro) {
     static quaternion_t q = {1, 0, 0, 0};
-    //TODO make constants
-    float beta = 0;
-    beta = sqrtf(3.0f * 0.25f) * configIMU_MADGWICK_GYRO_ERROR;
 
     float inv_norm; //vector norm
     float SEqDot_omega_1, SEqDot_omega_2, SEqDot_omega_3,
@@ -106,10 +103,10 @@ void IMU_Madgwick_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro) {
     SEqDot_omega_4 = halfSEq_1 * gyro.z + halfSEq_2 * gyro.y - halfSEq_3 * gyro.x;
 
     /* Compute then integrate the estimated quaternion rate */
-    q.q0 += (SEqDot_omega_1 - (beta * SEqHatDot_1)) * configIMU_MADGWICK_LOOP_TIME_S;
-    q.q1 += (SEqDot_omega_2 - (beta * SEqHatDot_2)) * configIMU_MADGWICK_LOOP_TIME_S;
-    q.q2 += (SEqDot_omega_3 - (beta * SEqHatDot_3)) * configIMU_MADGWICK_LOOP_TIME_S;
-    q.q3 += (SEqDot_omega_4 - (beta * SEqHatDot_4)) * configIMU_MADGWICK_LOOP_TIME_S;
+    q.q0 += (SEqDot_omega_1 - (configIMU_MADGWICK_GYRO_ERROR * SEqHatDot_1)) * configIMU_MADGWICK_LOOP_TIME_S;
+    q.q1 += (SEqDot_omega_2 - (configIMU_MADGWICK_GYRO_ERROR * SEqHatDot_2)) * configIMU_MADGWICK_LOOP_TIME_S;
+    q.q2 += (SEqDot_omega_3 - (configIMU_MADGWICK_GYRO_ERROR * SEqHatDot_3)) * configIMU_MADGWICK_LOOP_TIME_S;
+    q.q3 += (SEqDot_omega_4 - (configIMU_MADGWICK_GYRO_ERROR * SEqHatDot_4)) * configIMU_MADGWICK_LOOP_TIME_S;
 
     /* Normalise quaternion */
     quaternionNorm(&q);
