@@ -114,11 +114,7 @@ void IMU_quaternionST_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro, IM
     q.q3 = q.q3 + (q.q0 * gzf + q.q1 * gyf - q.q2 * gxf) * halfT;
 
     /* Normalise quaternion */
-    norm = fastInvSqrt(q0q0 + q1q1 + q2q2 + q3q3);
-    q.q0 *= norm;
-    q.q1 *= norm;
-    q.q2 *= norm;
-    q.q3 *= norm;
+    quaternionNorm(&q);
 
     /* Convert quaterionion to Euler angles */
     quaternionToEuler(&q, angles);

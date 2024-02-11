@@ -10,6 +10,7 @@
 ### IMU
 #### Attitude-only estimation based on accelerometer and gyroscope 
 - ***IMU_EKF:*** quadcopter-specific EKF. Features accelerometer CoG offset compensation and includes optional correction via vertical speed reading (e.g. from `altitudeKF`)
+- ***IMU_Madgwick:*** quaternion-based filter based on Sebastian Madgwick work
 - ***IMU_quaternionST:*** quaternion-based filter based on STEVAL-FCU001v1 code
 
 ### Altitude and Rate-of-Climb
@@ -26,7 +27,7 @@
 ### IMU
 #### Attitude-only estimation based on accelerometer and gyroscope 
 - ***IMU_EKF_AV:*** quadcopter-specific EKF (same algorithm as `IMU_EKF` C library)
-- ***IMU_Madgwick:*** quaternion-based filter based on Sebastian Madgwick work
+- ***IMU_Madgwick:*** quaternion-based filter based on Sebastian Madgwick work (same algorithm as `IMU_Madgwick` C library)
 
 ## Warning
 *C and C++ libraries, despite being based on the same algorithms, can contain different features*
