@@ -8,6 +8,7 @@
 - ***AHRS_EKF_AV:*** quadcopter-specific EKF. Features accelerometer CoG offset compensation
 - ***AHRS_Madgwick:*** quaternion-based filter based on Sebastian Madgwick work
 - ***AHRS_PX4_SO3:*** quaternion-based complementary filter based on Robert Mahony work
+- ***AHRS_PX4_EKF:*** EKF based on PX4 code
 
 ### IMU
 #### Attitude-only estimation based on accelerometer and gyroscope 
@@ -24,7 +25,7 @@
 - ***AHRS_EKF_AV:*** quadcopter-specific EKF (same algorithm as `AHRS_EKF` C library)
 - ***AHRS_Madgwick:*** quaternion-based filter based on Sebastian Madgwick work (same algorithm as `AHRS_Madgwick` C library)
 - ***AHRS_Attitude_SO3:*** quaternion-based complementary filter based on Robert Mahony work (same algorithm as `AHRS_PX4_S03` C library)
-- ***AHRS_Attitude_EKF:*** EKF based on PX4 code
+- ***AHRS_Attitude_EKF:*** EKF based on PX4 code (same algorithm as `AHRS_PX4_EKF` C library)
 
 ### IMU
 #### Attitude-only estimation based on accelerometer and gyroscope 
