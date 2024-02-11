@@ -70,9 +70,6 @@ extern "C" {
 #error configIMU_EKF_LOOP_TIME_S must be defined
 #endif
 
-/* Choose whether to use VEL_D to correct EKF attitude estimation */
-// #define configIMU_EKF_USE_VELD_CORRECTION
-
 /* Enable / disable correction of accelerometer offset from CoG */
 // #define configIMU_EKF_CORRECT_ACCEL_OFFSET
 
