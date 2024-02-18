@@ -22,7 +22,7 @@ jobs:
           tag: ${{ github.ref }}
           name: InertialEstimators ${{ github.ref_name }}
           body: |
-            See [CHANGELOG](CHANGELOG.md)
+            See [Changelog](Changelog.md)
           makeLatest: true
           draft: false
           prerelease: false
