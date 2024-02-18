@@ -108,9 +108,9 @@ void AHRS_EKF_init(axis3f_t* angles, axis3f_t* velocities) {
     _r_vd = configAHRS_EKF_VD_NOISE;
 
     /* Set angles */
-    angles->x = ELEM(AHRS_EKF_u, 0, 0); //u(0,0) is roll according to IMU ref. frame
-    angles->y = ELEM(AHRS_EKF_u, 1, 0); //u(1,0) is pitch according to IMU ref. frame
-    angles->z = ELEM(AHRS_EKF_u, 2, 0); //u(2,0) is yaw according to IMU ref. frame
+    angles->x = ELEM(AHRS_EKF_u, 0, 0);                 //u(0,0) is roll according to IMU ref. frame
+    angles->y = ELEM(AHRS_EKF_u, 1, 0);                 //u(1,0) is pitch according to IMU ref. frame
+    angles->z = fmodf(ELEM(AHRS_EKF_u, 2, 0), constPI); //u(2,0) is yaw according to IMU ref. frame
 
     /* Set velocities */
     velocities->x = ELEM(AHRS_EKF_u, 3, 0); //u(3,0) is speed along local x axis according to IMU ref. frame
@@ -288,9 +288,9 @@ void AHRS_EKF_updateAccelGyro(axis3f_t* angles, axis3f_t* velocities, axis3f_t a
     matrixSub(&_P, &TMP5, &_P);
 
     /* Set angles */
-    angles->x = ELEM(AHRS_EKF_u, 0, 0); //u(0,0) is roll according to IMU ref. frame
-    angles->y = ELEM(AHRS_EKF_u, 1, 0); //u(1,0) is pitch according to IMU ref. frame
-    angles->z = ELEM(AHRS_EKF_u, 2, 0); //u(2,0) is yaw according to IMU ref. frame
+    angles->x = ELEM(AHRS_EKF_u, 0, 0);                 //u(0,0) is roll according to IMU ref. frame
+    angles->y = ELEM(AHRS_EKF_u, 1, 0);                 //u(1,0) is pitch according to IMU ref. frame
+    angles->z = fmodf(ELEM(AHRS_EKF_u, 2, 0), constPI); //u(2,0) is yaw according to IMU ref. frame
 
     /* Set velocities */
     velocities->x = ELEM(AHRS_EKF_u, 3, 0); //u(3,0) is speed along local x axis according to IMU ref. frame
@@ -371,9 +371,9 @@ void AHRS_EKF_updateMag(axis3f_t* angles, axis3f_t* velocities, axis3f_t mag) {
     matrixSub(&_P, &TMP5, &_P);
 
     /* Set angles */
-    angles->x = ELEM(AHRS_EKF_u, 0, 0); //u(0,0) is roll according to IMU ref. frame
-    angles->y = ELEM(AHRS_EKF_u, 1, 0); //u(1,0) is pitch according to IMU ref. frame
-    angles->z = ELEM(AHRS_EKF_u, 2, 0); //u(2,0) is yaw according to IMU ref. frame
+    angles->x = ELEM(AHRS_EKF_u, 0, 0);                 //u(0,0) is roll according to IMU ref. frame
+    angles->y = ELEM(AHRS_EKF_u, 1, 0);                 //u(1,0) is pitch according to IMU ref. frame
+    angles->z = fmodf(ELEM(AHRS_EKF_u, 2, 0), constPI); //u(2,0) is yaw according to IMU ref. frame
 
     /* Set velocities */
     velocities->x = ELEM(AHRS_EKF_u, 3, 0); //u(3,0) is speed along local x axis according to IMU ref. frame
@@ -430,9 +430,9 @@ void AHRS_EKF_updateVelXY(axis3f_t* angles, axis3f_t* velocities, float vx, floa
     matrixSub(&_P, &TMP5, &_P);
 
     /* Set angles */
-    angles->x = ELEM(AHRS_EKF_u, 0, 0); //u(0,0) is roll according to IMU ref. frame
-    angles->y = ELEM(AHRS_EKF_u, 1, 0); //u(1,0) is pitch according to IMU ref. frame
-    angles->z = ELEM(AHRS_EKF_u, 2, 0); //u(2,0) is yaw according to IMU ref. frame
+    angles->x = ELEM(AHRS_EKF_u, 0, 0);                 //u(0,0) is roll according to IMU ref. frame
+    angles->y = ELEM(AHRS_EKF_u, 1, 0);                 //u(1,0) is pitch according to IMU ref. frame
+    angles->z = fmodf(ELEM(AHRS_EKF_u, 2, 0), constPI); //u(2,0) is yaw according to IMU ref. frame
 
     /* Set velocities */
     velocities->x = ELEM(AHRS_EKF_u, 3, 0); //u(3,0) is speed along local x axis according to IMU ref. frame
@@ -491,9 +491,9 @@ void AHRS_EKF_updateVelZ(axis3f_t* angles, axis3f_t* velocities, float vz, float
     matrixSub(&_P, &TMP5, &_P);
 
     /* Set angles */
-    angles->x = ELEM(AHRS_EKF_u, 0, 0); //u(0,0) is roll according to IMU ref. frame
-    angles->y = ELEM(AHRS_EKF_u, 1, 0); //u(1,0) is pitch according to IMU ref. frame
-    angles->z = ELEM(AHRS_EKF_u, 2, 0); //u(2,0) is yaw according to IMU ref. frame
+    angles->x = ELEM(AHRS_EKF_u, 0, 0);                 //u(0,0) is roll according to IMU ref. frame
+    angles->y = ELEM(AHRS_EKF_u, 1, 0);                 //u(1,0) is pitch according to IMU ref. frame
+    angles->z = fmodf(ELEM(AHRS_EKF_u, 2, 0), constPI); //u(2,0) is yaw according to IMU ref. frame
 
     /* Set velocities */
     velocities->x = ELEM(AHRS_EKF_u, 3, 0); //u(3,0) is speed along local x axis according to IMU ref. frame
@@ -577,9 +577,9 @@ void AHRS_EKF_updateVelNE(axis3f_t* angles, axis3f_t* velocities, float vN, floa
     matrixSub(&_P, &TMP5, &_P);
 
     /* Set angles */
-    angles->x = ELEM(AHRS_EKF_u, 0, 0); //u(0,0) is roll according to IMU ref. frame
-    angles->y = ELEM(AHRS_EKF_u, 1, 0); //u(1,0) is pitch according to IMU ref. frame
-    angles->z = ELEM(AHRS_EKF_u, 2, 0); //u(2,0) is yaw according to IMU ref. frame
+    angles->x = ELEM(AHRS_EKF_u, 0, 0);                 //u(0,0) is roll according to IMU ref. frame
+    angles->y = ELEM(AHRS_EKF_u, 1, 0);                 //u(1,0) is pitch according to IMU ref. frame
+    angles->z = fmodf(ELEM(AHRS_EKF_u, 2, 0), constPI); //u(2,0) is yaw according to IMU ref. frame
 
     /* Set velocities */
     velocities->x = ELEM(AHRS_EKF_u, 3, 0); //u(3,0) is speed along local x axis according to IMU ref. frame
@@ -642,9 +642,9 @@ void AHRS_EKF_updateVelD(axis3f_t* angles, axis3f_t* velocities, float vD, float
     matrixSub(&_P, &TMP5, &_P);
 
     /* Set angles */
-    angles->x = ELEM(AHRS_EKF_u, 0, 0); //u(0,0) is roll according to IMU ref. frame
-    angles->y = ELEM(AHRS_EKF_u, 1, 0); //u(1,0) is pitch according to IMU ref. frame
-    angles->z = ELEM(AHRS_EKF_u, 2, 0); //u(2,0) is yaw according to IMU ref. frame
+    angles->x = ELEM(AHRS_EKF_u, 0, 0);                 //u(0,0) is roll according to IMU ref. frame
+    angles->y = ELEM(AHRS_EKF_u, 1, 0);                 //u(1,0) is pitch according to IMU ref. frame
+    angles->z = fmodf(ELEM(AHRS_EKF_u, 2, 0), constPI); //u(2,0) is yaw according to IMU ref. frame
 
     /* Set velocities */
     velocities->x = ELEM(AHRS_EKF_u, 3, 0); //u(3,0) is speed along local x axis according to IMU ref. frame
@@ -666,9 +666,9 @@ void AHRS_EKF_reset(axis3f_t* angles, axis3f_t* velocities, float phi0, float th
     // matrixSet(&AHRS_EKF_u, 8, 0, incl_0);
 
     /* Set angles */
-    angles->x = ELEM(AHRS_EKF_u, 0, 0); //u(0,0) is roll according to IMU ref. frame
-    angles->y = ELEM(AHRS_EKF_u, 1, 0); //u(1,0) is pitch according to IMU ref. frame
-    angles->z = ELEM(AHRS_EKF_u, 2, 0); //u(2,0) is yaw according to IMU ref. frame
+    angles->x = ELEM(AHRS_EKF_u, 0, 0);                 //u(0,0) is roll according to IMU ref. frame
+    angles->y = ELEM(AHRS_EKF_u, 1, 0);                 //u(1,0) is pitch according to IMU ref. frame
+    angles->z = fmodf(ELEM(AHRS_EKF_u, 2, 0), constPI); //u(2,0) is yaw according to IMU ref. frame
 
     /* Set velocities */
     velocities->x = ELEM(AHRS_EKF_u, 3, 0); //u(3,0) is speed along local x axis according to IMU ref. frame
