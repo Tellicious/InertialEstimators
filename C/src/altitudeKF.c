@@ -39,7 +39,7 @@
 #include "string.h"
 
 #if defined(configALTITUDE_KF_ACC_HP_FILTER) || (configUSE_ALT_TOF != configTOF_DISABLE)
-#include "IIRfilters.h"
+#include "IIRFilters.h"
 #endif
 
 /* MATLAB Code ---------------------------------------------------------------*/

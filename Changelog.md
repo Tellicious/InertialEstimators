@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.0.6
+
+**Bugfix:**
+- Typo correction in `altitudeKF.c` that was stopping compilation on case-sensitive filesystems
+
 ## v1.0.5
 
 **Bugfix:**
