@@ -38,6 +38,20 @@
 #include "basicMath.h"
 #include "math.h"
 
+/* Macros --------------------------------------------------------------------*/
+
+#ifdef USE_FAST_MATH
+#define SIN(x)     fastSin(x)
+#define COS(x)     fastCos(x)
+#define SQRT(x)    fastSqrt(x);
+#define INVSQRT(x) fastInvSqrt(x);
+#else
+#define SIN(x)     sinf(x)
+#define COS(x)     cosf(x)
+#define SQRT(x)    sqrtf(x);
+#define INVSQRT(x) 1.0f / sqrtf(x);
+#endif /* USE_FAST_MATH */
+
 /* Functions -----------------------------------------------------------------*/
 void AHRS_Madgwick_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro, axis3f_t mag) { // local system variables
     static quaternion_t q = {1, 0, 0, 0};
@@ -212,7 +226,7 @@ void AHRS_Madgwick_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro, axis3
           + twom_z * (0.5f - SEq_2SEq_2 - SEq_3SEq_3);
 
     /* Normalize the flux vector to have only components in the x and z */
-    b_x = sqrtf((h.x * h.x) + (h.y * h.y));
+    b_x = SQRT((h.x * h.x) + (h.y * h.y));
     b_z = h.z;
 
     /* Convert quaterionion to Euler angles */

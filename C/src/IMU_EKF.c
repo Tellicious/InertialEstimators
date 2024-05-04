@@ -39,6 +39,20 @@
 #include "matrix.h"
 #include "numMethods.h"
 
+/* Macros --------------------------------------------------------------------*/
+
+#ifdef USE_FAST_MATH
+#define SIN(x)     fastSin(x)
+#define COS(x)     fastCos(x)
+#define SQRT(x)    fastSqrt(x);
+#define INVSQRT(x) fastInvSqrt(x);
+#else
+#define SIN(x)     sinf(x)
+#define COS(x)     cosf(x)
+#define SQRT(x)    sqrtf(x);
+#define INVSQRT(x) 1.0f / sqrtf(x);
+#endif /* USE_FAST_MATH */
+
 /* Private variables ---------------------------------------------------------*/
 
 static matrix_t
@@ -108,10 +122,10 @@ void IMU_EKF_prediction(float az, axis3f_t gyro) {
     float delta_u2, delta_u3;
 
     /* Trig functions */
-    float sPhi = sinf(ELEM(IMU_EKF_u, 0, 0));
-    float cPhi = cosf(ELEM(IMU_EKF_u, 0, 0));
-    float sTheta = sinf(ELEM(IMU_EKF_u, 1, 0));
-    float cTheta = cosf(ELEM(IMU_EKF_u, 1, 0));
+    float sPhi = SIN(ELEM(IMU_EKF_u, 0, 0));
+    float cPhi = COS(ELEM(IMU_EKF_u, 0, 0));
+    float sTheta = SIN(ELEM(IMU_EKF_u, 1, 0));
+    float cTheta = COS(ELEM(IMU_EKF_u, 1, 0));
     float inv_cTheta = 1.0f / cTheta;
     float tTheta = sTheta * inv_cTheta;
     float tmp1 = sPhi * gyro.y + cPhi * gyro.z;
@@ -372,10 +386,10 @@ void IMU_EKF_updateVelD(axis3f_t* angles, axis3f_t* velocities, float vD, float 
     matrixInit(&M, 1, 1);
 
     /* Trig functions */
-    float sPhi = sinf(ELEM(IMU_EKF_u, 0, 0));
-    float cPhi = cosf(ELEM(IMU_EKF_u, 0, 0));
-    float sTheta = sinf(ELEM(IMU_EKF_u, 1, 0));
-    float cTheta = cosf(ELEM(IMU_EKF_u, 1, 0));
+    float sPhi = SIN(ELEM(IMU_EKF_u, 0, 0));
+    float cPhi = COS(ELEM(IMU_EKF_u, 0, 0));
+    float sTheta = SIN(ELEM(IMU_EKF_u, 1, 0));
+    float cTheta = COS(ELEM(IMU_EKF_u, 1, 0));
 
     /* C matrix */
     ELEM(C_tmp, 0, 0) = ELEM(IMU_EKF_u, 3, 0) * cPhi * cTheta - ELEM(IMU_EKF_u, 4, 0) * cTheta * sPhi;

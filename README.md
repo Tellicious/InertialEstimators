@@ -32,6 +32,9 @@
 - ***IMU_EKF_AV:*** quadcopter-specific EKF (same algorithm as `IMU_EKF` C library)
 - ***IMU_Madgwick:*** quaternion-based filter based on Sebastian Madgwick work (same algorithm as `IMU_Madgwick` C library)
 
+## Configuration
+Adding `USE_FAST_MATH` to compile definitions swaps all `sinf`, `cosf` and `sqrtf` occurrences with faster variants `fastSin`, `fastCos`, `fastSqrt` and `fastInvSqrt` from `basicMath`
+
 ## Warning
 *C and C++ libraries, despite being based on the same algorithms, can contain different features*
 

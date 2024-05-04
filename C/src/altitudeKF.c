@@ -80,6 +80,20 @@
  * M
  */
 
+/* Macros --------------------------------------------------------------------*/
+
+#ifdef USE_FAST_MATH
+#define SIN(x)     fastSin(x)
+#define COS(x)     fastCos(x)
+#define SQRT(x)    fastSqrt(x);
+#define INVSQRT(x) fastInvSqrt(x);
+#else
+#define SIN(x)     sinf(x)
+#define COS(x)     cosf(x)
+#define SQRT(x)    sqrtf(x);
+#define INVSQRT(x) 1.0f / sqrtf(x);
+#endif /* USE_FAST_MATH */
+
 /* Private variables ---------------------------------------------------------*/
 static float _inv_pressZeroLevel; /* Ground pressure */
 static float _alt_k1, _alt_kpow;  /* Altitude calculation coefficients */
@@ -97,8 +111,8 @@ static float altitudeKFAccelDownCalc(axis3f_t accel, float b_az, axis3f_t angles
     float accD;
 #if defined(configALTITUDE_KF_USE_ACC_D)
     //transform accel_z into accel_D
-    accD = (constG - accel.x * sinf(angles.y) + accel.y * cosf(angles.y) * sinf(angles.x)
-            + (accel.z - b_az) * cosf(angles.y) * cosf(angles.x));
+    accD = (constG - accel.x * SIN(angles.y) + accel.y * COS(angles.y) * SIN(angles.x)
+            + (accel.z - b_az) * COS(angles.y) * COS(angles.x));
 #else
     accD = (constG + accel.z - b_az);
 #endif
@@ -114,7 +128,7 @@ static float altitudeKFAccelDownCalc(axis3f_t accel, float b_az, axis3f_t angles
 static float altitudeKFVelDownCalc(axis3f_t vel, axis3f_t angles) {
     float velD;
     //transform vel into vel_D
-    velD = -vel.x * sinf(angles.y) + vel.y * cosf(angles.y) * sinf(angles.x) + vel.z * cosf(angles.y) * cosf(angles.x);
+    velD = -vel.x * SIN(angles.y) + vel.y * COS(angles.y) * SIN(angles.x) + vel.z * COS(angles.y) * COS(angles.x);
 
     return velD;
 }
@@ -183,7 +197,7 @@ void altitudeKF_updateBaroAccel(altitudeState_t* altState, float press, axis3f_t
 #if (configUSE_ALT_TOF != configTOF_DISABLE)
 void altitudeKF_updateLIDAR(altitudeState_t* altState, float ToFAlt, axis3f_t angles) {
     /* Differentiate LIDAR reading to obtain vertical speed */
-    IIRFilterDerivativeProcess(&LIDAR_diff, (ToFAlt * cosf(angles.y) * cosf(angles.x)));
+    IIRFilterDerivativeProcess(&LIDAR_diff, (ToFAlt * COS(angles.y) * COS(angles.x)));
 
     /* Correct with LIDAR only if measured altitude and current attitude are within allowed range */
     if ((LIDAR_diff.output < configALTITUDE_KF_MAX_LIDAR_ROC)

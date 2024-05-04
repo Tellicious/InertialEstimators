@@ -38,6 +38,20 @@
 #include "math.h"
 #include "quaternion.h"
 
+/* Macros --------------------------------------------------------------------*/
+
+#ifdef USE_FAST_MATH
+#define SIN(x)     fastSin(x)
+#define COS(x)     fastCos(x)
+#define SQRT(x)    fastSqrt(x);
+#define INVSQRT(x) fastInvSqrt(x);
+#else
+#define SIN(x)     sinf(x)
+#define COS(x)     cosf(x)
+#define SQRT(x)    sqrtf(x);
+#define INVSQRT(x) 1.0f / sqrtf(x);
+#endif /* USE_FAST_MATH */
+
 /* Private variables ---------------------------------------------------------*/
 static quaternion_t _q = {1, 0, 0, 0};
 static float _q0q0 = 1.f;
@@ -64,7 +78,7 @@ void AHRS_PX4_S03_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro, axis3f
 
         /* Normalise magnetometer measurement */
         /* Will sqrt work better? PX4 system is powerful enough? */
-        inv_norm = 1.f / sqrtf(mag.x * mag.x + mag.y * mag.y + mag.z * mag.z);
+        inv_norm = INVSQRT(mag.x * mag.x + mag.y * mag.y + mag.z * mag.z);
         mag.x *= inv_norm;
         mag.y *= inv_norm;
         mag.z *= inv_norm;
@@ -73,7 +87,7 @@ void AHRS_PX4_S03_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro, axis3f
         h.x = 2.0f * (mag.x * (0.5f - _q2q2 - _q3q3) + mag.y * (_q1q2 - _q0q3) + mag.z * (_q1q3 + _q0q2));
         h.y = 2.0f * (mag.x * (_q1q2 + _q0q3) + mag.y * (0.5f - _q1q1 - _q3q3) + mag.z * (_q2q3 - _q0q1));
         h.z = 2.0f * mag.x * (_q1q3 - _q0q2) + 2.0f * mag.y * (_q2q3 + _q0q1) + 2.0f * mag.z * (0.5f - _q1q1 - _q2q2);
-        bx = sqrtf(h.x * h.x + h.y * h.y);
+        bx = SQRT(h.x * h.x + h.y * h.y);
         bz = h.z;
 
         /* Estimated direction of magnetic field */
@@ -175,14 +189,14 @@ void AHRS_PX4_S03_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro, axis3f
 }
 
 void AHRS_PX4_S03_reset(axis3f_t* angles, float phi0, float theta0, float psi0) {
-    float cPhi = cosf(phi0 * 0.5f);
-    float sPhi = sinf(phi0 * 0.5f);
+    float cPhi = COS(phi0 * 0.5f);
+    float sPhi = SIN(phi0 * 0.5f);
 
-    float cTheta = cosf(theta0 * 0.5f);
-    float sTheta = sinf(theta0 * 0.5f);
+    float cTheta = COS(theta0 * 0.5f);
+    float sTheta = SIN(theta0 * 0.5f);
 
-    float cPsi = cosf(psi0 * 0.5f);
-    float sPsi = sinf(psi0 * 0.5f);
+    float cPsi = COS(psi0 * 0.5f);
+    float sPsi = SIN(psi0 * 0.5f);
 
     _q.q0 = cPhi * cTheta * cPsi + sPhi * sTheta * sPsi;
     _q.q1 = sPhi * cTheta * cPsi - cPhi * sTheta * sPsi;

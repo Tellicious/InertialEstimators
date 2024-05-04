@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.1.0
+
+**New Features:**
+- Added possibility of using faster math functions by adding `USE_FAST_MATH` to compile definitions, swapping all `sinf`, `cosf` and `sqrtf` occurrences with faster variants `fastSin`, `fastCos`, `fastSqrt` and `fastInvSqrt` from `basicMath`
+
 ## v1.0.6
 
 **Bugfix:**

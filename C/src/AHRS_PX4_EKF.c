@@ -39,6 +39,20 @@
 #include "matrix.h"
 #include "numMethods.h"
 
+/* Macros --------------------------------------------------------------------*/
+
+#ifdef USE_FAST_MATH
+#define SIN(x)     fastSin(x)
+#define COS(x)     fastCos(x)
+#define SQRT(x)    fastSqrt(x);
+#define INVSQRT(x) fastInvSqrt(x);
+#else
+#define SIN(x)     sinf(x)
+#define COS(x)     cosf(x)
+#define SQRT(x)    sqrtf(x);
+#define INVSQRT(x) 1.0f / sqrtf(x);
+#endif /* USE_FAST_MATH */
+
 /* Private variables ---------------------------------------------------------*/
 
 static matrix_t
@@ -84,8 +98,8 @@ void AHRS_PX4_EKF_init() {
     matrixInversed(&_J, &_Ji);
 
     ELEM(AHRS_EKF_u, 8, 0) = -constG;
-    ELEM(AHRS_EKF_u, 9, 0) = cosf(configAHRS_PX4_EKF_INCL0);
-    ELEM(AHRS_EKF_u, 11, 0) = sinf(configAHRS_PX4_EKF_INCL0);
+    ELEM(AHRS_EKF_u, 9, 0) = COS(configAHRS_PX4_EKF_INCL0);
+    ELEM(AHRS_EKF_u, 11, 0) = SIN(configAHRS_PX4_EKF_INCL0);
     ELEM(_Q, 0, 0) = configAHRS_PX4_EKF_R_S_NOISE * configAHRS_PX4_EKF_PRED_LOOP_TIME_S;
     ELEM(_Q, 1, 1) = configAHRS_PX4_EKF_R_S_NOISE * configAHRS_PX4_EKF_PRED_LOOP_TIME_S;
     ELEM(_Q, 2, 2) = configAHRS_PX4_EKF_R_S_NOISE * configAHRS_PX4_EKF_PRED_LOOP_TIME_S;
@@ -396,10 +410,9 @@ void AHRS_PX4_EKF_calculateAngles(axis3f_t* angles) {
 
     /* Normalize accelerometer estimate */
     float inv_norm =
-        1.f
-        / sqrtf(ELEM(AHRS_EKF_u, 6, 0) * ELEM(AHRS_EKF_u, 6, 0) + ELEM(AHRS_EKF_u, 7, 0) * ELEM(AHRS_EKF_u, 7, 0)
+        INVSQRT(ELEM(AHRS_EKF_u, 6, 0) * ELEM(AHRS_EKF_u, 6, 0) + ELEM(AHRS_EKF_u, 7, 0) * ELEM(AHRS_EKF_u, 7, 0)
                 + ELEM(AHRS_EKF_u, 8, 0) * ELEM(AHRS_EKF_u, 8, 0));
-    if (isnan(inv_norm) || isinf(inv_norm)) {
+    if (isnan(inv_norm) || iSIN(inv_norm)) {
         inv_norm = 1.f / constG;
     }
     float ax = ELEM(AHRS_EKF_u, 6, 0) * inv_norm;
@@ -408,10 +421,9 @@ void AHRS_PX4_EKF_calculateAngles(axis3f_t* angles) {
 
     /* Normalize magnetometer estimate */
     inv_norm =
-        1.f
-        / sqrtf(ELEM(AHRS_EKF_u, 9, 0) * ELEM(AHRS_EKF_u, 9, 0) + ELEM(AHRS_EKF_u, 10, 0) * ELEM(AHRS_EKF_u, 10, 0)
+        INVSQRT(ELEM(AHRS_EKF_u, 9, 0) * ELEM(AHRS_EKF_u, 9, 0) + ELEM(AHRS_EKF_u, 10, 0) * ELEM(AHRS_EKF_u, 10, 0)
                 + ELEM(AHRS_EKF_u, 11, 0) * ELEM(AHRS_EKF_u, 11, 0));
-    if (isnan(inv_norm) || isinf(inv_norm)) {
+    if (isnan(inv_norm) || iSIN(inv_norm)) {
         inv_norm = 1.f;
     }
     float mx = ELEM(AHRS_EKF_u, 9, 0) * inv_norm;
@@ -420,11 +432,11 @@ void AHRS_PX4_EKF_calculateAngles(axis3f_t* angles) {
 
     /* Compute Euler angles */
     angles->x = atan2f(-ay, -az);
-    angles->y = asinf(ax);
-    float sPhi = sinf(angles->x);
-    float cPhi = cosf(angles->x);
+    angles->y = aSIN(ax);
+    float sPhi = SIN(angles->x);
+    float cPhi = COS(angles->x);
     float sTheta = ax;
-    float cTheta = cosf(angles->y);
+    float cTheta = COS(angles->y);
     float Yh = my * cPhi - mz * sPhi;
     float Xh = mx * cTheta + (my * sPhi + mz * cPhi) * sTheta;
     angles->z = atan2f(-Yh, Xh);
@@ -435,9 +447,9 @@ void AHRS_PX4_EKF_calculateAngles(axis3f_t* angles) {
 //--------------------------------Set inclination angle--------------------------------------//
 void AHRS_Attitude_PX4_EKF_setInclination(float incl_angle) {
 
-    ELEM(AHRS_EKF_u, 9, 0) = cosf(incl_angle);
+    ELEM(AHRS_EKF_u, 9, 0) = COS(incl_angle);
     ELEM(AHRS_EKF_u, 10, 0) = 0;
-    ELEM(AHRS_EKF_u, 11, 0) = sinf(incl_angle);
+    ELEM(AHRS_EKF_u, 11, 0) = SIN(incl_angle);
 
     return;
 }

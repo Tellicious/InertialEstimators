@@ -39,6 +39,20 @@
 #include "matrix.h"
 #include "numMethods.h"
 
+/* Macros --------------------------------------------------------------------*/
+
+#ifdef USE_FAST_MATH
+#define SIN(x)     fastSin(x)
+#define COS(x)     fastCos(x)
+#define SQRT(x)    fastSqrt(x);
+#define INVSQRT(x) fastInvSqrt(x);
+#else
+#define SIN(x)     sinf(x)
+#define COS(x)     cosf(x)
+#define SQRT(x)    sqrtf(x);
+#define INVSQRT(x) 1.0f / sqrtf(x);
+#endif /* USE_FAST_MATH */
+
 /* Private variables ---------------------------------------------------------*/
 
 static matrix_t
@@ -127,10 +141,10 @@ void AHRS_EKF_init(axis3f_t* angles, axis3f_t* velocities) {
 void AHRS_EKF_prediction(float az, axis3f_t gyro) {
 
     /* Trig functions */
-    float sPhi = sinf(ELEM(AHRS_EKF_u, 0, 0));
-    float cPhi = cosf(ELEM(AHRS_EKF_u, 0, 0));
-    float sTheta = sinf(ELEM(AHRS_EKF_u, 1, 0));
-    float cTheta = cosf(ELEM(AHRS_EKF_u, 1, 0));
+    float sPhi = SIN(ELEM(AHRS_EKF_u, 0, 0));
+    float cPhi = COS(ELEM(AHRS_EKF_u, 0, 0));
+    float sTheta = SIN(ELEM(AHRS_EKF_u, 1, 0));
+    float cTheta = COS(ELEM(AHRS_EKF_u, 1, 0));
     float inv_cTheta = 1.0f / cTheta;
     float tTheta = sTheta * inv_cTheta;
     float pr = gyro.x - ELEM(AHRS_EKF_u, 9, 0);
@@ -318,7 +332,7 @@ void AHRS_EKF_updateMag(axis3f_t* angles, axis3f_t* velocities, axis3f_t mag) {
     matrixInit(&K_mag, 12, 3);
 
     /* Normalize readings */
-    float invNorm = 1.f / sqrtf(mag.x * mag.x + mag.y * mag.y + mag.z * mag.z);
+    float invNorm = INVSQRT(mag.x * mag.x + mag.y * mag.y + mag.z * mag.z);
     if (isnan(invNorm) || isinf(invNorm)) {
         invNorm = 1.f;
     }
@@ -327,14 +341,14 @@ void AHRS_EKF_updateMag(axis3f_t* angles, axis3f_t* velocities, axis3f_t mag) {
     mag.z *= invNorm;
 
     /* Trig functions */
-    float sInc = sinf(ELEM(AHRS_EKF_u, 8, 0));
-    float cInc = cosf(ELEM(AHRS_EKF_u, 8, 0));
-    float sPhi = sinf(ELEM(AHRS_EKF_u, 0, 0));
-    float cPhi = cosf(ELEM(AHRS_EKF_u, 0, 0));
-    float sTheta = sinf(ELEM(AHRS_EKF_u, 1, 0));
-    float cTheta = cosf(ELEM(AHRS_EKF_u, 1, 0));
-    float sPsi = sinf(ELEM(AHRS_EKF_u, 2, 0));
-    float cPsi = cosf(ELEM(AHRS_EKF_u, 2, 0));
+    float sInc = SIN(ELEM(AHRS_EKF_u, 8, 0));
+    float cInc = COS(ELEM(AHRS_EKF_u, 8, 0));
+    float sPhi = SIN(ELEM(AHRS_EKF_u, 0, 0));
+    float cPhi = COS(ELEM(AHRS_EKF_u, 0, 0));
+    float sTheta = SIN(ELEM(AHRS_EKF_u, 1, 0));
+    float cTheta = COS(ELEM(AHRS_EKF_u, 1, 0));
+    float sPsi = SIN(ELEM(AHRS_EKF_u, 2, 0));
+    float cPsi = COS(ELEM(AHRS_EKF_u, 2, 0));
 
     /* C matrix */
     //_C_mag.zeros(); //zeros or not?
@@ -534,12 +548,12 @@ void AHRS_EKF_updateVelNE(axis3f_t* angles, axis3f_t* velocities, float vN, floa
     ELEM(R_tmp, 1, 1) = ELEM(R_tmp, 0, 0);
 
     /* Trig functions */
-    float sPhi = sinf(ELEM(AHRS_EKF_u, 0, 0));
-    float cPhi = cosf(ELEM(AHRS_EKF_u, 0, 0));
-    float sTheta = sinf(ELEM(AHRS_EKF_u, 1, 0));
-    float cTheta = cosf(ELEM(AHRS_EKF_u, 1, 0));
-    float sPsi = sinf(ELEM(AHRS_EKF_u, 2, 0));
-    float cPsi = cosf(ELEM(AHRS_EKF_u, 2, 0));
+    float sPhi = SIN(ELEM(AHRS_EKF_u, 0, 0));
+    float cPhi = COS(ELEM(AHRS_EKF_u, 0, 0));
+    float sTheta = SIN(ELEM(AHRS_EKF_u, 1, 0));
+    float cTheta = COS(ELEM(AHRS_EKF_u, 1, 0));
+    float sPsi = SIN(ELEM(AHRS_EKF_u, 2, 0));
+    float cPsi = COS(ELEM(AHRS_EKF_u, 2, 0));
 
     /* C matrix */
     //C_tmp.zeros(); //zeros or not?
@@ -620,10 +634,10 @@ void AHRS_EKF_updateVelD(axis3f_t* angles, axis3f_t* velocities, float vD, float
     matrixInit(&M, 1, 1);
 
     /* Trig functions */
-    float sPhi = sinf(ELEM(AHRS_EKF_u, 0, 0));
-    float cPhi = cosf(ELEM(AHRS_EKF_u, 0, 0));
-    float sTheta = sinf(ELEM(AHRS_EKF_u, 1, 0));
-    float cTheta = cosf(ELEM(AHRS_EKF_u, 1, 0));
+    float sPhi = SIN(ELEM(AHRS_EKF_u, 0, 0));
+    float cPhi = COS(ELEM(AHRS_EKF_u, 0, 0));
+    float sTheta = SIN(ELEM(AHRS_EKF_u, 1, 0));
+    float cTheta = COS(ELEM(AHRS_EKF_u, 1, 0));
 
     /* C matrix */
     //C_tmp.zeros(); //zeros or not?
