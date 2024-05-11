@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.1.1
+
+**Improvements:**
+- Added possibility of using faster math functions also to `IMU_quaternionST`
+- Added accelerometer offset correction also to `IMU_quaternionST`
+- Other minor improvements to `IMU_quaternionST`
+
 ## v1.1.0
 
 **New Features:**

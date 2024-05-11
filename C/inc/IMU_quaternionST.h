@@ -62,6 +62,24 @@ extern "C" {
 #error configIMU_QUATERNIONST_LOOP_TIME_S must be defined
 #endif
 
+/* Enable / disable correction of accelerometer offset from CoG */
+// #define configIMU_QUATERNIONST_CORRECT_ACCEL_OFFSET
+
+/* Offset from CoG along local x-asix, in m */
+#if defined(configIMU_QUATERNIONST_CORRECT_ACCEL_OFFSET) && !defined(configIMU_QUATERNIONST_ACCEL_OFFSET_X)
+#define configIMU_QUATERNIONST_ACCEL_OFFSET_X 0.f
+#endif
+
+/* Offset from CoG along local y-asix, in m */
+#if defined(configIMU_QUATERNIONST_CORRECT_ACCEL_OFFSET) && !defined(configIMU_QUATERNIONST_ACCEL_OFFSET_Y)
+#define configIMU_QUATERNIONST_ACCEL_OFFSET_Y 0.f
+#endif
+
+/* Offset from CoG along local z-asix, in m */
+#if defined(configIMU_QUATERNIONST_CORRECT_ACCEL_OFFSET) && !defined(configIMU_QUATERNIONST_ACCEL_OFFSET_Z)
+#define configIMU_QUATERNIONST_ACCEL_OFFSET_Z 0.f
+#endif
+
 /* Typedefs ------------------------------------------------------------------*/
 
 typedef enum { IMU_KP_HIGH = 0, IMU_KP_NORM = 1 } IMU_KP_val_t;

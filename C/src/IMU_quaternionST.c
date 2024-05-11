@@ -34,12 +34,29 @@
 /* Includes ------------------------------------------------------------------*/
 
 #include "IMU_quaternionST.h"
+#include <math.h>
 #include "basicMath.h"
 #include "quaternion.h"
+
+/* Macros --------------------------------------------------------------------*/
+
+#ifdef USE_FAST_MATH
+#define SIN(x)     fastSin(x)
+#define COS(x)     fastCos(x)
+#define SQRT(x)    fastSqrt(x);
+#define INVSQRT(x) fastInvSqrt(x);
+#else
+#define SIN(x)     sinf(x)
+#define COS(x)     cosf(x)
+#define SQRT(x)    sqrtf(x);
+#define INVSQRT(x) 1.0f / sqrtf(x);
+#endif /* USE_FAST_MATH */
 
 /* Functions -----------------------------------------------------------------*/
 
 void IMU_quaternionST_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro, IMU_KP_val_t kpVal) {
+    const float halfT = 0.5f * configIMU_QUATERNIONST_LOOP_TIME_S;
+    const float kInt = configIMU_QUATERNIONST_KI * configIMU_QUATERNIONST_LOOP_TIME_S;
     static quaternion_t q = {1, 0, 0, 0};
     static float exInt = 0, eyInt = 0, ezInt = 0;
     float ahrs_kp;
@@ -47,8 +64,6 @@ void IMU_quaternionST_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro, IM
     float norm;
     float vx, vy, vz;
     float ex, ey, ez;
-    float q0q0, q0q1, q0q2, /*q0q3,*/ q1q1, /*q1q2,*/ q1q3, q2q2, q2q3, q3q3;
-    float halfT;
 
     if (kpVal == IMU_KP_HIGH) {
         ahrs_kp = configIMU_QUATERNIONST_KP_HIGH;
@@ -60,46 +75,44 @@ void IMU_quaternionST_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro, IM
     ayf = accel.y;
     azf = accel.z;
 
+#ifdef configIMU_QUATERNIONST_CORRECT_ACCEL_OFFSET
+    axf += ((gyro.y * gyro.y + gyro.z * gyro.z) * configIMU_QUATERNIONST_ACCEL_OFFSET_X)
+           - (gyro.x * gyro.y * configIMU_QUATERNIONST_ACCEL_OFFSET_Y)
+           - (gyro.x * gyro.z * configIMU_QUATERNIONST_ACCEL_OFFSET_Z);
+    ayf += ((gyro.x * gyro.x + gyro.z * gyro.z) * configIMU_QUATERNIONST_ACCEL_OFFSET_Y)
+           - (gyro.x * gyro.y * configIMU_QUATERNIONST_ACCEL_OFFSET_X)
+           - (gyro.y * gyro.z * configIMU_QUATERNIONST_ACCEL_OFFSET_Z);
+    azf += ((gyro.x * gyro.x + gyro.y * gyro.y) * configIMU_QUATERNIONST_ACCEL_OFFSET_Z)
+           - (gyro.x * gyro.y * configIMU_QUATERNIONST_ACCEL_OFFSET_X)
+           - (gyro.y * gyro.z * configIMU_QUATERNIONST_ACCEL_OFFSET_Y);
+#endif
+
     gxf = gyro.x;
     gyf = gyro.y;
     gzf = gyro.z;
 
-    /* Auxiliary variables to reduce number of repeated operations */
-    q0q0 = q.q0 * q.q0;
-    q0q1 = q.q0 * q.q1;
-    q0q2 = q.q0 * q.q2;
-    //q0q3 = q.q0 * q.q3;
-    q1q1 = q.q1 * q.q1;
-    //q1q2 = q.q1 * q.q2;
-    q1q3 = q.q1 * q.q3;
-    q2q2 = q.q2 * q.q2;
-    q2q3 = q.q2 * q.q3;
-    q3q3 = q.q3 * q.q3;
-
     /* Normalise the accelerometer measurement */
-    norm = fastInvSqrt(axf * axf + ayf * ayf + azf * azf);
+    norm = INVSQRT(axf * axf + ayf * ayf + azf * azf);
 
     axf *= norm;
     ayf *= norm;
     azf *= norm;
 
     /* Estimate direction of gravity and flux (v and w) */
-    /* MODIF inverted direction of gravity vector to account for different reference system */
-    /*  vx = 2 * (q1q3 - q0q2);
-        vy = 2 * (q0q1 + q2q3);
-        vz = (q0q0 - q1q1 - q2q2 + q3q3);*/
-    vx = 2 * (q0q2 - q1q3);
-    vy = -2 * (q0q1 + q2q3);
-    vz = (q1q1 + q2q2 - q0q0 - q3q3);
+    /* NED reference frame. Accel reading when flat is [0; 0; -1] */
+    vx = 2 * ((q.q0 * q.q2) - (q.q1 * q.q3));
+    vy = -2 * ((q.q0 * q.q1) + (q.q2 * q.q3));
+    // vz = ((q.q1 * q.q1) + (q.q2 * q.q2) - (q.q0 * q.q0) - (q.q3 * q.q3));
+    vz = 2 * ((q.q1 * q.q1) + (q.q2 * q.q2)) - 1;
 
     ex = (ayf * vz - azf * vy);
     ey = (azf * vx - axf * vz);
     ez = (axf * vy - ayf * vx);
 
     /* Integral error scaled integral gain */
-    exInt += ex * configIMU_QUATERNIONST_KI * configIMU_QUATERNIONST_LOOP_TIME_S;
-    eyInt += ey * configIMU_QUATERNIONST_KI * configIMU_QUATERNIONST_LOOP_TIME_S;
-    ezInt += ez * configIMU_QUATERNIONST_KI * configIMU_QUATERNIONST_LOOP_TIME_S;
+    exInt += ex * kInt;
+    eyInt += ey * kInt;
+    ezInt += ez * kInt;
 
     /* Adjust gyroscope measurements */
     gxf += ahrs_kp * ex + exInt;
@@ -107,11 +120,10 @@ void IMU_quaternionST_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro, IM
     gzf += ahrs_kp * ez + ezInt;
 
     /* Integrate quaternion rate and normalise */
-    halfT = 0.5f * configIMU_QUATERNIONST_LOOP_TIME_S;
-    q.q0 = q.q0 + (-q.q1 * gxf - q.q2 * gyf - q.q3 * gzf) * halfT;
-    q.q1 = q.q1 + (q.q0 * gxf + q.q2 * gzf - q.q3 * gyf) * halfT;
-    q.q2 = q.q2 + (q.q0 * gyf - q.q1 * gzf + q.q3 * gxf) * halfT;
-    q.q3 = q.q3 + (q.q0 * gzf + q.q1 * gyf - q.q2 * gxf) * halfT;
+    q.q0 += (-q.q1 * gxf - q.q2 * gyf - q.q3 * gzf) * halfT;
+    q.q1 += (q.q0 * gxf + q.q2 * gzf - q.q3 * gyf) * halfT;
+    q.q2 += (q.q0 * gyf - q.q1 * gzf + q.q3 * gxf) * halfT;
+    q.q3 += (q.q0 * gzf + q.q1 * gyf - q.q2 * gxf) * halfT;
 
     /* Normalise quaternion */
     quaternionNorm(&q);
