@@ -95,8 +95,12 @@
 #endif /* USE_FAST_MATH */
 
 /* Private variables ---------------------------------------------------------*/
+#ifdef configALTITUDE_KF_USE_APPROX_ALTITUDE
+static float _alt0; /* Ground altitude ISA */
+#else
 static float _inv_pressZeroLevel; /* Ground pressure */
 static float _alt_k1, _alt_kpow;  /* Altitude calculation coefficients */
+#endif /* configALTITUDE_KF_USE_APPROX_ALTITUDE */
 
 #ifdef configALTITUDE_KF_ACC_HP_FILTER
 IIRFilterGeneric_t HPFilt_accD;
@@ -107,6 +111,111 @@ IIRFilterDerivative_t LIDAR_diff;
 #endif
 
 /* Private functions ---------------------------------------------------------*/
+/* Calculate altitude in m from barometric pressure in hPa */
+static float altitudeCalculation(float pressure) {
+
+#ifdef configALTITUDE_KF_USE_APPROX_ALTITUDE
+    /* Approximated formula with ISA parameters (t_SL = 15°C, QNH = 101325 Pa) */
+    int32_t RP, h0, hs0, HP1, HP2, RH;
+    int16_t hs1, dP0;
+    int8_t P0;
+
+    RP = pressure * 800.f;
+
+    if (RP >= 824000) {
+        P0 = 103;
+        h0 = -138507;
+        hs0 = -5252;
+        hs1 = 311;
+    } else if (RP >= 784000) {
+        P0 = 98;
+        h0 = 280531;
+        hs0 = -5468;
+        hs1 = 338;
+    } else if (RP >= 744000) {
+        P0 = 93;
+        h0 = 717253;
+        hs0 = -5704;
+        hs1 = 370;
+    } else if (RP >= 704000) {
+        P0 = 88;
+        h0 = 1173421;
+        hs0 = -5964;
+        hs1 = 407;
+    } else if (RP >= 664000) {
+        P0 = 83;
+        h0 = 1651084;
+        hs0 = -6252;
+        hs1 = 450;
+    } else if (RP >= 624000) {
+        P0 = 78;
+        h0 = 2152645;
+        hs0 = -6573;
+        hs1 = 501;
+    } else if (RP >= 584000) {
+        P0 = 73;
+        h0 = 2680954;
+        hs0 = -6934;
+        hs1 = 560;
+    } else if (RP >= 544000) {
+        P0 = 68;
+        h0 = 3239426;
+        hs0 = -7342;
+        hs1 = 632;
+    } else if (RP >= 504000) {
+        P0 = 63;
+        h0 = 3832204;
+        hs0 = -7808;
+        hs1 = 719;
+    } else if (RP >= 464000) {
+        P0 = 58;
+        h0 = 4464387;
+        hs0 = -8345;
+        hs1 = 826;
+    } else if (RP >= 424000) {
+        P0 = 53;
+        h0 = 5142359;
+        hs0 = -8972;
+        hs1 = 960;
+    } else if (RP >= 384000) {
+        P0 = 48;
+        h0 = 5874268;
+        hs0 = -9714;
+        hs1 = 1131;
+    } else if (RP >= 344000) {
+        P0 = 43;
+        h0 = 6670762;
+        hs0 = -10609;
+        hs1 = 1354;
+    } else if (RP >= 304000) {
+        P0 = 38;
+        h0 = 7546157;
+        hs0 = -11711;
+        hs1 = 1654;
+    } else if (RP >= 264000) {
+        P0 = 33;
+        h0 = 8520395;
+        hs0 = -13103;
+        hs1 = 2072;
+    } else {
+        P0 = 28;
+        h0 = 9622536;
+        hs0 = -14926;
+        hs1 = 2682;
+    }
+
+    dP0 = RP - P0 * 8000;
+    HP1 = (hs0 * dP0) >> 1;
+    HP2 = (((hs1 * dP0) >> 14) * dP0) >> 4;
+    RH = ((HP1 + HP2) >> 8) + h0;
+
+    return (float)RH * 1e-3f - _alt0;
+#else
+    /* Correct formula */
+    return (_alt_k1 * (1 - powf((pressure * _inv_pressZeroLevel), _alt_kpow)));
+#endif /* configALTITUDE_KF_USE_APPROX_ALTITUDE */
+}
+
 static float altitudeKFAccelDownCalc(axis3f_t accel, float b_az, axis3f_t angles) {
     float accD;
 #if defined(configALTITUDE_KF_USE_ACC_D)
@@ -138,10 +247,14 @@ static float altitudeKFVelDownCalc(axis3f_t vel, axis3f_t angles) {
 
 void altitudeKF_init(altitudeState_t* altState, float pressGround, float tempGround) {
 
-    /* Initialize support variables for altitude calculation */
+/* Initialize support variables for altitude calculation */
+#ifdef configALTITUDE_KF_USE_APPROX_ALTITUDE
+    _alt0 = altitudeCalculation(pressGround);
+#else
     _inv_pressZeroLevel = 1.f / pressGround;
     _alt_k1 = tempGround / configALTITUDE_KF_CONST_TEMP_RATE;
     _alt_kpow = (configALTITUDE_KF_CONST_R * configALTITUDE_KF_CONST_TEMP_RATE) / (configALTITUDE_KF_CONST_M * constG);
+#endif /* configALTITUDE_KF_USE_APPROX_ALTITUDE */
 
     /* Initialize state */
     altState->RoC = 0;
@@ -176,8 +289,7 @@ void altitudeKF_prediction(altitudeState_t* altState) {
 
 void altitudeKF_updateBaroAccel(altitudeState_t* altState, float press, axis3f_t accel, float b_az, axis3f_t angles) {
     /* Calculate delta measures */
-    //float delta_baroAltitude =  (1.0f - powf(press *_inv_pressZeroLevel, 0.190295f)) * 44330.0f - altState->alt;
-    float delta_baroAltitude = (_alt_k1 * (1 - powf((press * _inv_pressZeroLevel), _alt_kpow))) - altState->alt;
+    float delta_baroAltitude = altitudeCalculation(press) - altState->alt;
     float delta_accelDown = altitudeKFAccelDownCalc(accel, b_az, angles) + altState->vAcc;
 
     /* Correct with accelerometer only if measured value is within allowed range */
@@ -224,7 +336,11 @@ void altitudeKF_updateVelD(altitudeState_t* altState, axis3f_t velocities, axis3
 #endif
 
 void altitudeKF_reset(altitudeState_t* altState, float pressGround) {
+#ifdef configALTITUDE_KF_USE_APPROX_ALTITUDE
+    _alt0 = altitudeCalculation(pressGround);
+#else
     _inv_pressZeroLevel = 1.f / pressGround;
+#endif /* configALTITUDE_KF_USE_APPROX_ALTITUDE */
 
     /* Initialize state */
     altState->RoC = 0;

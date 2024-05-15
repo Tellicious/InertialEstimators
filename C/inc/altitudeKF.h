@@ -46,6 +46,9 @@ extern "C" {
 
 /* Configuration -------------------------------------------------------------*/
 
+/* Choose whether to use accurate or approximate altitude calculation based on ISA conditions */
+// #define configALTITUDE_KF_USE_APPROX_ALTITUDE
+
 /* Choose whether to use accelerometer high-pass filtering */
 // #define configALTITUDE_KF_ACC_HP_FILTER
 

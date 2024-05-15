@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.2.0
+
+**Improvements:**
+- Added possibility of using approximate altitude calculation based on ISA conditions (t_SL = 15°C, QNH = 101325 Pa) to `altitudeKF` by defining `configALTITUDE_KF_USE_APPROX_ALTITUDE` 
+
 ## v1.1.1
 
 **Improvements:**
