@@ -36,21 +36,6 @@
 
 #include "AHRS_Madgwick.h"
 #include "basicMath.h"
-#include "math.h"
-
-/* Macros --------------------------------------------------------------------*/
-
-#ifdef USE_FAST_MATH
-#define SIN(x)     fastSin(x)
-#define COS(x)     fastCos(x)
-#define SQRT(x)    fastSqrt(x);
-#define INVSQRT(x) fastInvSqrt(x);
-#else
-#define SIN(x)     sinf(x)
-#define COS(x)     cosf(x)
-#define SQRT(x)    sqrtf(x);
-#define INVSQRT(x) 1.0f / sqrtf(x);
-#endif /* USE_FAST_MATH */
 
 /* Functions -----------------------------------------------------------------*/
 void AHRS_Madgwick_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro, axis3f_t mag) { // local system variables
@@ -115,7 +100,7 @@ void AHRS_Madgwick_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro, axis3
     gyro.z *= -1;
 
     /* normalize the accelerometer measurement */
-    inv_norm = fastInvSqrt(accel.x * accel.x + accel.y * accel.y + accel.z * accel.z);
+    inv_norm = INVSQRT(accel.x * accel.x + accel.y * accel.y + accel.z * accel.z);
     if (isnan(inv_norm) || isinf(inv_norm)) {
         inv_norm = 1.f;
     }
@@ -124,7 +109,7 @@ void AHRS_Madgwick_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro, axis3
     accel.z *= inv_norm;
 
     /* normalize the magnetometer measurement */
-    inv_norm = fastInvSqrt(mag.x * mag.x + mag.y * mag.y + mag.z * mag.z);
+    inv_norm = INVSQRT(mag.x * mag.x + mag.y * mag.y + mag.z * mag.z);
     if (isnan(inv_norm) || isinf(inv_norm)) {
         inv_norm = 1.f;
     }
@@ -169,8 +154,8 @@ void AHRS_Madgwick_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro, axis3
     SEqHatDot_4 = J_14or21 * f_1 + J_11or24 * f_2 - J_44 * f_4 - J_54 * f_5 + J_64 * f_6;
 
     /* normalise the gradient to estimate direction of the gyroscope error */
-    inv_norm = fastInvSqrt(SEqHatDot_1 * SEqHatDot_1 + SEqHatDot_2 * SEqHatDot_2 + SEqHatDot_3 * SEqHatDot_3
-                           + SEqHatDot_4 * SEqHatDot_4);
+    inv_norm = INVSQRT(SEqHatDot_1 * SEqHatDot_1 + SEqHatDot_2 * SEqHatDot_2 + SEqHatDot_3 * SEqHatDot_3
+                       + SEqHatDot_4 * SEqHatDot_4);
     if (isnan(inv_norm) || isinf(inv_norm)) {
         inv_norm = 1.f;
     }

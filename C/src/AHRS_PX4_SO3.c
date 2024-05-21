@@ -35,22 +35,7 @@
 /* Includes ------------------------------------------------------------------*/
 
 #include "AHRS_PX4_SO3.h"
-#include "math.h"
 #include "quaternion.h"
-
-/* Macros --------------------------------------------------------------------*/
-
-#ifdef USE_FAST_MATH
-#define SIN(x)     fastSin(x)
-#define COS(x)     fastCos(x)
-#define SQRT(x)    fastSqrt(x);
-#define INVSQRT(x) fastInvSqrt(x);
-#else
-#define SIN(x)     sinf(x)
-#define COS(x)     cosf(x)
-#define SQRT(x)    sqrtf(x);
-#define INVSQRT(x) 1.0f / sqrtf(x);
-#endif /* USE_FAST_MATH */
 
 /* Private variables ---------------------------------------------------------*/
 static quaternion_t _q = {1, 0, 0, 0};

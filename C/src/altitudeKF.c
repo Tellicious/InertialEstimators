@@ -34,7 +34,6 @@
 /* Includes ------------------------------------------------------------------*/
 
 #include "altitudeKF.h"
-#include <math.h>
 #include "basicMath.h"
 #include "string.h"
 
@@ -79,20 +78,6 @@
  * [kalmf,L,P,M] = kalman(Plant,Q,R);
  * M
  */
-
-/* Macros --------------------------------------------------------------------*/
-
-#ifdef USE_FAST_MATH
-#define SIN(x)     fastSin(x)
-#define COS(x)     fastCos(x)
-#define SQRT(x)    fastSqrt(x);
-#define INVSQRT(x) fastInvSqrt(x);
-#else
-#define SIN(x)     sinf(x)
-#define COS(x)     cosf(x)
-#define SQRT(x)    sqrtf(x);
-#define INVSQRT(x) 1.0f / sqrtf(x);
-#endif /* USE_FAST_MATH */
 
 /* Private variables ---------------------------------------------------------*/
 #ifdef configALTITUDE_KF_USE_APPROX_ALTITUDE
@@ -264,9 +249,7 @@ void altitudeKF_init(altitudeState_t* altState, float pressGround, float tempGro
 
     /* Initialize downward acceleration high-pass filter */
 #ifdef configALTITUDE_KF_ACC_HP_FILTER
-    IIRFilterInit(&HPFilt_accD, configALTITUDE_KF_ACCEL_HP_N0, configALTITUDE_KF_ACCEL_HP_N1,
-                  configALTITUDE_KF_ACCEL_HP_N2, configALTITUDE_KF_ACCEL_HP_N3, configALTITUDE_KF_ACCEL_HP_D1,
-                  configALTITUDE_KF_ACCEL_HP_D2, configALTITUDE_KF_ACCEL_HP_D3);
+    IIRFilterInitHP(&HPFilt_accD, configALTITUDE_KF_ACCEL_HP_FREQ, configALTITUDE_KF_LOOP_TIME_S * 1e3f);
 #endif
 
     /* Initialize derivative calculation for vertical speed estimation */

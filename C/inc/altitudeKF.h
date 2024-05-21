@@ -107,6 +107,11 @@ extern "C" {
 #define configALTITUDE_KF_LIDAR_DIFF_ND 25.f
 #endif
 
+/* Accelerometer high-pass filter frequency, in Hz*/
+#ifndef configALTITUDE_KF_ACCEL_HP_FREQ
+#define configALTITUDE_KF_ACCEL_HP_FREQ 0.15f
+#endif
+
 /* Kalman filter gains */
 #if (configUSE_ALT_TOF != configTOF_DISABLE) && defined(configALTITUDE_KF_USE_VELD_CORRECTION)
 #define configALTITUDE_KF_M_HH 3.150189708597878e-03f
@@ -152,26 +157,6 @@ extern "C" {
 #define configALTITUDE_KF_M_AA 6.918802688106744e-02f
 #define configALTITUDE_KF_M_BA 8.328408234155726e-05f
 #endif
-
-/* Accelerometer high-pass filter coefficients */
-
-/* 200Hz Butterworth high-pass filter @ 0.15Hz */
-#define configALTITUDE_KF_ACCEL_HP_N0 9.968948130282534e-01f
-#define configALTITUDE_KF_ACCEL_HP_N1 -1.993789626056507e+00f
-#define configALTITUDE_KF_ACCEL_HP_N2 9.968948130282534e-01f
-#define configALTITUDE_KF_ACCEL_HP_N3 0.f
-#define configALTITUDE_KF_ACCEL_HP_D1 -1.993779983847134e+00f
-#define configALTITUDE_KF_ACCEL_HP_D2 9.937992682658794e-01f
-#define configALTITUDE_KF_ACCEL_HP_D3 0.f
-
-/* 200Hz Butterworth band-pass filter @ 0.5Hz - 50 Hz */
-// #define configALTITUDE_KF_ACCEL_HP_N0 4.960729284355082e-01f
-// #define configALTITUDE_KF_ACCEL_HP_N1 0.f
-// #define configALTITUDE_KF_ACCEL_HP_N2 -4.960729284355082e-01f
-// #define configALTITUDE_KF_ACCEL_HP_N3 0.f
-// #define configALTITUDE_KF_ACCEL_HP_D1 -9.921458568710164e-01f
-// #define configALTITUDE_KF_ACCEL_HP_D2 7.854143128983698e-03f
-// #define configALTITUDE_KF_ACCEL_HP_D3 0.f
 
 /* Typedefs ------------------------------------------------------------------*/
 

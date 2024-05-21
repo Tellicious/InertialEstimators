@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.2.1
+
+**Improvements:**
+- Removed faster math defines as already included in `basicMath` from ADVUtils
+- Changed filter initialization in `altitudeKF` to use the new `IIRFilterInitHP` method
+
+**Bugfix:**
+- Removed remaining calls to `fastInvSqrt`
+
 ## v1.2.0
 
 **Improvements:**

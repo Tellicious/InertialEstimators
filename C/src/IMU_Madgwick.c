@@ -70,7 +70,7 @@ void IMU_Madgwick_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro) {
     gyro.z *= -1;
 
     /* Normalize the accelerometer measurement */
-    inv_norm = fastInvSqrt(accel.x * accel.x + accel.y * accel.y + accel.z * accel.z);
+    inv_norm = INVSQRT(accel.x * accel.x + accel.y * accel.y + accel.z * accel.z);
     if (isnan(inv_norm) || isinf(inv_norm)) {
         inv_norm = 1.f;
     }
@@ -96,8 +96,8 @@ void IMU_Madgwick_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro) {
     SEqHatDot_4 = J_14or21 * f_1 + J_11or24 * f_2;
 
     /* Normalise the gradient to estimate direction of the gyroscope error */
-    inv_norm = fastInvSqrt(SEqHatDot_1 * SEqHatDot_1 + SEqHatDot_2 * SEqHatDot_2 + SEqHatDot_3 * SEqHatDot_3
-                           + SEqHatDot_4 * SEqHatDot_4);
+    inv_norm = INVSQRT(SEqHatDot_1 * SEqHatDot_1 + SEqHatDot_2 * SEqHatDot_2 + SEqHatDot_3 * SEqHatDot_3
+                       + SEqHatDot_4 * SEqHatDot_4);
     if (isnan(inv_norm) || isinf(inv_norm)) {
         inv_norm = 1.f;
     }
