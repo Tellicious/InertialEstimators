@@ -246,6 +246,9 @@ void altitudeKF_init(altitudeState_t* altState, float pressGround, float tempGro
     altState->alt = 0;
     altState->vAcc = 0;
     altState->b_vAcc = 0;
+    altState->_altPred = 0;
+    altState->_RoCPred = 0;
+    altState->_vAccPred = 0;
 
     /* Initialize downward acceleration high-pass filter */
 #ifdef configALTITUDE_KF_ACC_HP_FILTER
@@ -267,13 +270,18 @@ void altitudeKF_prediction(altitudeState_t* altState) {
 
     altState->RoC += configALTITUDE_KF_LOOP_TIME_S * (altState->vAcc - altState->b_vAcc);
 
+    /* Copy entire state to buffer variables */
+    altState->_altPred = altState->alt;
+    altState->_RoCPred = altState->RoC;
+    altState->_vAccPred = altState->vAcc;
+
     return;
 }
 
 void altitudeKF_updateBaroAccel(altitudeState_t* altState, float press, axis3f_t accel, float b_az, axis3f_t angles) {
     /* Calculate delta measures */
-    float delta_baroAltitude = altitudeCalculation(press) - altState->alt;
-    float delta_accelDown = altitudeKFAccelDownCalc(accel, b_az, angles) + altState->vAcc;
+    float delta_baroAltitude = altitudeCalculation(press) - altState->_altPred;
+    float delta_accelDown = altitudeKFAccelDownCalc(accel, b_az, angles) + altState->_vAccPred;
 
     /* Correct with accelerometer only if measured value is within allowed range */
     if (fabsf(delta_accelDown) > configALTITUDE_KF_MAX_ACCEL_DOWN) {
@@ -298,8 +306,8 @@ void altitudeKF_updateLIDAR(altitudeState_t* altState, float ToFAlt, axis3f_t an
     if ((LIDAR_diff.output < configALTITUDE_KF_MAX_LIDAR_ROC)
         && (fabsf(angles.x) <= configALTITUDE_KF_MAX_LIDAR_ROLL_PITCH)
         && (fabsf(angles.y) <= configALTITUDE_KF_MAX_LIDAR_ROLL_PITCH)) {
-        float delta_LIDARRoC =
-            (LIDAR_diff.output - altState->RoC) * configALTITUDE_KF_LIDAR_UPDATE_TIME_S / configALTITUDE_KF_LOOP_TIME_S;
+        float delta_LIDARRoC = (LIDAR_diff.output - altState->_RoCPred) * configALTITUDE_KF_LIDAR_UPDATE_TIME_S
+                               / configALTITUDE_KF_LOOP_TIME_S;
         altState->alt += configALTITUDE_KF_M_HL * delta_LIDARRoC;
         altState->RoC += configALTITUDE_KF_M_VL * delta_LIDARRoC;
         altState->vAcc += configALTITUDE_KF_M_AL * delta_LIDARRoC;
@@ -310,7 +318,7 @@ void altitudeKF_updateLIDAR(altitudeState_t* altState, float ToFAlt, axis3f_t an
 
 #ifdef configALTITUDE_KF_USE_VELD_CORRECTION
 void altitudeKF_updateVelD(altitudeState_t* altState, axis3f_t velocities, axis3f_t angles) {
-    float delta_velD = (altitudeKFVelDownCalc(velocities, angles) + altState->RoC);
+    float delta_velD = (altitudeKFVelDownCalc(velocities, angles) + altState->_RoCPred);
     altState->alt -= configALTITUDE_KF_M_HV * delta_velD;
     altState->RoC -= configALTITUDE_KF_M_VV * delta_velD;
     altState->vAcc -= configALTITUDE_KF_M_AV * delta_velD;
@@ -330,6 +338,9 @@ void altitudeKF_reset(altitudeState_t* altState, float pressGround) {
     altState->alt = 0;
     altState->vAcc = 0;
     altState->b_vAcc = 0;
+    altState->_altPred = 0;
+    altState->_RoCPred = 0;
+    altState->_vAccPred = 0;
 
     /* Initialize accelerometer HP filter */
 #ifdef configALTITUDE_KF_ACC_HP_FILTER

@@ -166,6 +166,8 @@ extern "C" {
  */
 typedef struct {
     float alt, RoC, vAcc, b_vAcc;
+    /* Private variables, result of prediction step */
+    float _altPred, _RoCPred, _vAccPred;
 } altitudeState_t;
 
 /* Function prototypes -------------------------------------------------------*/
