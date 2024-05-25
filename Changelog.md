@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.2.2
+
+**Bugfix:**
+- Corrected `altitudeKF` MATLAB code to show gain L instead of M
+- Corrected `altitudeKF` functions to always use predicted value when multiple corrections are occurring
+
 ## v1.2.1
 
 **Improvements:**
