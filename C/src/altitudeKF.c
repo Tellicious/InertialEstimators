@@ -52,7 +52,7 @@
  * R=[100 0; 0 70]; //R=[15^2 0; 0 36];
  * Plant=ss(A,B,C,0,T,'inputname',{'v_acc_noise', 'v_acc_bias_noise'},'outputname',{'h','vAcc'},'statename',{'h','RoC','vAcc','v_acc_bias'});
  * [kalmf,L,P,M] = kalman(Plant,Q,R);
- * M
+ * L
  */
 
 /* MATLAB CODE for KF with LIDAR
@@ -64,7 +64,7 @@
  * R=[100 0 0; 0 80 0; 0 0 70]; //R=[15^2 0 0; 0 80 0; 0 0 36];
  * Plant=ss(A,B,C,0,T,'inputname',{'v_acc_noise', 'v_acc_bias_noise'},'outputname',{'h','RoC','vAcc'},'statename',{'h','RoC','vAcc','v_acc_bias'});
  * [kalmf,L,P,M] = kalman(Plant,Q,R);
- * M
+ * L
  */
 
 /* MATLAB CODE for KF with LIDAR and Velocity Down correction
@@ -76,7 +76,7 @@
  * R=[100 0 0 0; 0 80 0 0; 0 0 80 0; 0 0 0 70];
  * Plant=ss(A,B,C,0,T,'inputname',{'v_acc_noise', 'v_acc_bias_noise'},'outputname',{'h','RoC LIDAR','RoC EKF', 'vAcc'},'statename',{'h','RoC','vAcc','v_acc_bias'});
  * [kalmf,L,P,M] = kalman(Plant,Q,R);
- * M
+ * L
  */
 
 /* Private variables ---------------------------------------------------------*/
