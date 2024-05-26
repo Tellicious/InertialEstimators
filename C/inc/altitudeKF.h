@@ -156,6 +156,7 @@ extern "C" {
 #define configALTITUDE_KF_L_VA 4.891307927430644e-03f
 #define configALTITUDE_KF_L_AA 6.918802688106758e-02f
 #define configALTITUDE_KF_L_BA 8.328408234164664e-05f
+#endif
 
 /* Typedefs ------------------------------------------------------------------*/
 
