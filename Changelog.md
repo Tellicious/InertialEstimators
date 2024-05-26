@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.2.3
+
+**Bugfix:**
+- Added a missing _#endif_ in `altitudeKF`
+- Fixed naming of filter gains
+
 ## v1.2.2
 
 **Bugfix:**
