@@ -52,7 +52,7 @@
  * R=[100 0; 0 70]; //R=[15^2 0; 0 36];
  * Plant=ss(A,B,C,0,T,'inputname',{'v_acc_noise', 'v_acc_bias_noise'},'outputname',{'h','vAcc'},'statename',{'h','RoC','vAcc','v_acc_bias'});
  * [kalmf,L,P,M] = kalman(Plant,Q,R);
- * L
+ * [L(:,1);L(:,2)]
  */
 
 /* MATLAB CODE for KF with LIDAR
@@ -64,7 +64,7 @@
  * R=[100 0 0; 0 80 0; 0 0 70]; //R=[15^2 0 0; 0 80 0; 0 0 36];
  * Plant=ss(A,B,C,0,T,'inputname',{'v_acc_noise', 'v_acc_bias_noise'},'outputname',{'h','RoC','vAcc'},'statename',{'h','RoC','vAcc','v_acc_bias'});
  * [kalmf,L,P,M] = kalman(Plant,Q,R);
- * L
+ * [L(:,1);L(:,2);L(:,2);L(:,3)]
  */
 
 /* MATLAB CODE for KF with LIDAR and Velocity Down correction
@@ -76,7 +76,7 @@
  * R=[100 0 0 0; 0 80 0 0; 0 0 80 0; 0 0 0 70];
  * Plant=ss(A,B,C,0,T,'inputname',{'v_acc_noise', 'v_acc_bias_noise'},'outputname',{'h','RoC LIDAR','RoC EKF', 'vAcc'},'statename',{'h','RoC','vAcc','v_acc_bias'});
  * [kalmf,L,P,M] = kalman(Plant,Q,R);
- * L
+ * [L(:,1);L(:,2);L(:,3);L(:,4)]
  */
 
 /* Private variables ---------------------------------------------------------*/
@@ -289,10 +289,10 @@ void altitudeKF_updateBaroAccel(altitudeState_t* altState, float press, axis3f_t
     }
 
     /* Apply correction */
-    altState->alt += configALTITUDE_KF_M_HH * delta_baroAltitude - configALTITUDE_KF_M_HA * delta_accelDown;
-    altState->RoC += configALTITUDE_KF_M_VH * delta_baroAltitude - configALTITUDE_KF_M_VA * delta_accelDown;
-    altState->vAcc += configALTITUDE_KF_M_AH * delta_baroAltitude - configALTITUDE_KF_M_AA * delta_accelDown;
-    altState->b_vAcc += configALTITUDE_KF_M_BH * delta_baroAltitude - configALTITUDE_KF_M_BA * delta_accelDown;
+    altState->alt += configALTITUDE_KF_L_HH * delta_baroAltitude - configALTITUDE_KF_L_HA * delta_accelDown;
+    altState->RoC += configALTITUDE_KF_L_VH * delta_baroAltitude - configALTITUDE_KF_L_VA * delta_accelDown;
+    altState->vAcc += configALTITUDE_KF_L_AH * delta_baroAltitude - configALTITUDE_KF_L_AA * delta_accelDown;
+    altState->b_vAcc += configALTITUDE_KF_L_BH * delta_baroAltitude - configALTITUDE_KF_L_BA * delta_accelDown;
 
     return;
 }
@@ -308,10 +308,10 @@ void altitudeKF_updateLIDAR(altitudeState_t* altState, float ToFAlt, axis3f_t an
         && (fabsf(angles.y) <= configALTITUDE_KF_MAX_LIDAR_ROLL_PITCH)) {
         float delta_LIDARRoC = (LIDAR_diff.output - altState->_RoCPred) * configALTITUDE_KF_LIDAR_UPDATE_TIME_S
                                / configALTITUDE_KF_LOOP_TIME_S;
-        altState->alt += configALTITUDE_KF_M_HL * delta_LIDARRoC;
-        altState->RoC += configALTITUDE_KF_M_VL * delta_LIDARRoC;
-        altState->vAcc += configALTITUDE_KF_M_AL * delta_LIDARRoC;
-        altState->b_vAcc += configALTITUDE_KF_M_BL * delta_LIDARRoC;
+        altState->alt += configALTITUDE_KF_L_HL * delta_LIDARRoC;
+        altState->RoC += configALTITUDE_KF_L_VL * delta_LIDARRoC;
+        altState->vAcc += configALTITUDE_KF_L_AL * delta_LIDARRoC;
+        altState->b_vAcc += configALTITUDE_KF_L_BL * delta_LIDARRoC;
     }
 }
 #endif
@@ -319,10 +319,10 @@ void altitudeKF_updateLIDAR(altitudeState_t* altState, float ToFAlt, axis3f_t an
 #ifdef configALTITUDE_KF_USE_VELD_CORRECTION
 void altitudeKF_updateVelD(altitudeState_t* altState, axis3f_t velocities, axis3f_t angles) {
     float delta_velD = (altitudeKFVelDownCalc(velocities, angles) + altState->_RoCPred);
-    altState->alt -= configALTITUDE_KF_M_HV * delta_velD;
-    altState->RoC -= configALTITUDE_KF_M_VV * delta_velD;
-    altState->vAcc -= configALTITUDE_KF_M_AV * delta_velD;
-    altState->b_vAcc -= configALTITUDE_KF_M_BV * delta_velD;
+    altState->alt -= configALTITUDE_KF_L_HV * delta_velD;
+    altState->RoC -= configALTITUDE_KF_L_VV * delta_velD;
+    altState->vAcc -= configALTITUDE_KF_L_AV * delta_velD;
+    altState->b_vAcc -= configALTITUDE_KF_L_BV * delta_velD;
 }
 #endif
 
