@@ -112,50 +112,35 @@ extern "C" {
 #define configALTITUDE_KF_ACCEL_HP_FREQ 0.15f
 #endif
 
-/* Kalman filter gains */
-#if (configUSE_ALT_TOF != configTOF_DISABLE) && defined(configALTITUDE_KF_USE_VELD_CORRECTION)
-#define configALTITUDE_KF_L_HH 3.159691724039985e-03f
-#define configALTITUDE_KF_L_VH 1.902561445841514e-03f
-#define configALTITUDE_KF_L_AH 7.531097964645326e-07f
-#define configALTITUDE_KF_L_BH -8.625898582504006e-04f
-#define configALTITUDE_KF_L_HL 2.421536864478208e-03f
-#define configALTITUDE_KF_L_VL 9.797525441182712e-03f
-#define configALTITUDE_KF_L_AL 3.081559239856321e-03f
-#define configALTITUDE_KF_L_BL -1.745255910005277e-02f
-#define configALTITUDE_KF_L_HV 2.421536864478211e-03f
-#define configALTITUDE_KF_L_VV 9.797525441182722e-03f
-#define configALTITUDE_KF_L_AV 3.081559239856331e-03f
-#define configALTITUDE_KF_L_BV -1.745255910005278e-02f
-#define configALTITUDE_KF_L_HA 1.952486423860921e-05f
-#define configALTITUDE_KF_L_VA 3.857815251892414e-03f
-#define configALTITUDE_KF_L_AA 6.902251810411432e-02f
-#define configALTITUDE_KF_L_BA 1.815865407043496e-03f
-#elif (configUSE_ALT_TOF != configTOF_DISABLE) || defined(configALTITUDE_KF_USE_VELD_CORRECTION)
-#define configALTITUDE_KF_L_HH 4.453061957891071e-03f
-#define configALTITUDE_KF_L_VH 3.605278017532177e-03f
-#define configALTITUDE_KF_L_AH 9.899305752637477e-06f
-#define configALTITUDE_KF_L_BH -2.010776171599746e-03f
-#define configALTITUDE_KF_L_HL 4.573132243008134e-03f
-#define configALTITUDE_KF_L_VL 1.590254612313570e-02f
-#define configALTITUDE_KF_L_AL 3.240372918253922e-03f
-#define configALTITUDE_KF_L_BL -2.466265026688891e-02f
-#define configALTITUDE_KF_L_HV 4.573132243008134e-03f  // same as LIDAR
-#define configALTITUDE_KF_L_VV 1.590254612313570e-02f  // same as LIDAR
-#define configALTITUDE_KF_L_AV 3.240372918253922e-03f  // same as LIDAR
-#define configALTITUDE_KF_L_BV -2.466265026688891e-02f // same as LIDAR
-#define configALTITUDE_KF_L_HA 3.350519914362559e-05f
-#define configALTITUDE_KF_L_VA 4.042050177943409e-03f
-#define configALTITUDE_KF_L_AA 6.909705338644491e-02f
-#define configALTITUDE_KF_L_BA 1.343684827267039e-03f
-#else
-#define configALTITUDE_KF_L_HH 1.660131767767979e-02f
-#define configALTITUDE_KF_L_VH 2.744933752564912e-02f
-#define configALTITUDE_KF_L_AH 1.788970980633465e-04f
-#define configALTITUDE_KF_L_BH -2.217573853932911e-02f
-#define configALTITUDE_KF_L_HA 2.791600132999355e-04f
-#define configALTITUDE_KF_L_VA 4.891307927430644e-03f
-#define configALTITUDE_KF_L_AA 6.918802688106758e-02f
-#define configALTITUDE_KF_L_BA 8.328408234164664e-05f
+/* Altitude KF noises */
+/* Accel z state noise */
+#ifndef configALTITUDE_KF_AZ_STATE_NOISE
+#define configALTITUDE_KF_AZ_STATE_NOISE 0.36f
+#endif
+
+/* Bias acc z noise */
+#ifndef configALTITUDE_KF_B_AZ_NOISE
+#define configALTITUDE_KF_B_AZ_NOISE 0.05f
+#endif
+
+/* Accel z meas noise */
+#ifndef configALTITUDE_KF_AZ_MEAS_NOISE
+#define configALTITUDE_KF_AZ_MEAS_NOISE 70.f
+#endif
+
+/* Altitude meas noise */
+#ifndef configALTITUDE_KF_H_NOISE
+#define configALTITUDE_KF_H_NOISE 100.f
+#endif
+
+/* LIDAR meas noise */
+#ifndef configALTITUDE_KF_LIDAR_NOISE
+#define configALTITUDE_KF_LIDAR_NOISE 80.f
+#endif
+
+/* Velocity d global noise (pointing down) */
+#ifndef configALTITUDE_KF_VD_NOISE
+#define configALTITUDE_KF_VD_NOISE 80.f
 #endif
 
 /* Typedefs ------------------------------------------------------------------*/

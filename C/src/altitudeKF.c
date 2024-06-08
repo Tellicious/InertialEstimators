@@ -35,6 +35,8 @@
 
 #include "altitudeKF.h"
 #include "basicMath.h"
+#include "matrix.h"
+#include "numMethods.h"
 #include "string.h"
 
 #if defined(configALTITUDE_KF_ACC_HP_FILTER) || (configUSE_ALT_TOF != configTOF_DISABLE)
@@ -59,27 +61,39 @@
  * T=1/200;
  * A=[1 T T^2/2 -T^2/2; 0 1 T -T; 0 0 1 0; 0 0 0 1];
  * B=[0 0;0 0; 1 0; 0 1];
- * C=[1 0 0 0; 0 1 0 0; 0 0 1 0];
+ * C=[1 0 0 0; 0 0 1 0; 0 1 0 0];
  * Q=[0.36 0; 0 0.05];
- * R=[100 0 0; 0 80 0; 0 0 70]; //R=[15^2 0 0; 0 80 0; 0 0 36];
- * Plant=ss(A,B,C,0,T,'inputname',{'v_acc_noise', 'v_acc_bias_noise'},'outputname',{'h','RoC','vAcc'},'statename',{'h','RoC','vAcc','v_acc_bias'});
+ * R=[100 0 0; 0 70 0; 0 0 80]; //R=[15^2 0 0; 0 80 0; 0 0 36];
+ * Plant=ss(A,B,C,0,T,'inputname',{'v_acc_noise', 'v_acc_bias_noise'},'outputname',{'h','vAcc', 'RoC'},'statename',{'h','RoC','vAcc','v_acc_bias'});
  * [kalmf,L,P,M] = kalman(Plant,Q,R);
- * [L(:,1);L(:,2);L(:,2);L(:,3)]
+ * [L(:,1);L(:,3);L(:,3);L(:,2)]
  */
 
 /* MATLAB CODE for KF with LIDAR and Velocity Down correction
  * T=1/200;
  * A=[1 T T^2/2 -T^2/2; 0 1 T -T; 0 0 1 0; 0 0 0 1];
  * B=[0 0;0 0; 1 0; 0 1];
- * C=[1 0 0 0; 0 1 0 0; 0 1 0 0; 0 0 1 0];
+ * C=[1 0 0 0; 0 0 1 0; 0 1 0 0; 0 1 0 0];
  * Q=[0.36 0; 0 0.05];
- * R=[100 0 0 0; 0 80 0 0; 0 0 80 0; 0 0 0 70];
- * Plant=ss(A,B,C,0,T,'inputname',{'v_acc_noise', 'v_acc_bias_noise'},'outputname',{'h','RoC LIDAR','RoC EKF', 'vAcc'},'statename',{'h','RoC','vAcc','v_acc_bias'});
+ * R=[100 0 0 0; 0 70 0 0; 0 0 80 0; 0 0 0 80];
+ * Plant=ss(A,B,C,0,T,'inputname',{'v_acc_noise', 'v_acc_bias_noise'},'outputname',{'h','vAcc','RoC LIDAR','RoC EKF'},'statename',{'h','RoC','vAcc','v_acc_bias'});
  * [kalmf,L,P,M] = kalman(Plant,Q,R);
  * [L(:,1);L(:,2);L(:,3);L(:,4)]
  */
 
+/* Macros --------------------------------------------------------------------*/
+#if (configUSE_ALT_TOF != configTOF_DISABLE) && defined(configALTITUDE_KF_USE_VELD_CORRECTION)
+#define configALTITUDE_KF_NMEAS 4
+#elif (configUSE_ALT_TOF != configTOF_DISABLE) || defined(configALTITUDE_KF_USE_VELD_CORRECTION)
+#define configALTITUDE_KF_NMEAS 3
+#else
+#define configALTITUDE_KF_NMEAS 2
+#endif
+
 /* Private variables ---------------------------------------------------------*/
+/* Gain matrix */
+matrix_t K;
+
 #ifdef configALTITUDE_KF_USE_APPROX_ALTITUDE
 static float _alt0; /* Ground altitude ISA */
 #else
@@ -259,6 +273,87 @@ void altitudeKF_init(altitudeState_t* altState, float pressGround, float tempGro
 #if (configUSE_ALT_TOF != configTOF_DISABLE)
     IIRFilterDerivativeInit(&LIDAR_diff, configALTITUDE_KF_LIDAR_DIFF_ND, configALTITUDE_KF_LIDAR_UPDATE_TIME_S * 1e3f);
 #endif
+
+    /* Calculate Kalman filter gain */
+    matrix_t A, B, C, /* Q, */ Qe, R, P, tmp1, tmp2, tmp3, tmp4;
+
+    /* Initialize matrices */
+    matrixInit(&A, 4, 4);
+    matrixInit(&B, 4, 2);
+    matrixInit(&C, configALTITUDE_KF_NMEAS, 4);
+    // matrixInit(&Q, 2, 2);
+    matrixInit(&Qe, 4, 4);
+    matrixInit(&R, configALTITUDE_KF_NMEAS, configALTITUDE_KF_NMEAS);
+    matrixInit(&P, 4, 4);
+    matrixInit(&K, 4, configALTITUDE_KF_NMEAS);
+    matrixInit(&tmp1, 4, 4);
+    matrixInit(&tmp2, 4, configALTITUDE_KF_NMEAS);
+    matrixInit(&tmp3, configALTITUDE_KF_NMEAS, configALTITUDE_KF_NMEAS);
+    matrixInit(&tmp4, configALTITUDE_KF_NMEAS, configALTITUDE_KF_NMEAS);
+
+    ELEM(A, 0, 0) = 1.f;
+    ELEM(A, 0, 1) = configALTITUDE_KF_LOOP_TIME_S;
+    ELEM(A, 0, 2) = configALTITUDE_KF_LOOP_TIME_S * configALTITUDE_KF_LOOP_TIME_S * 0.5f;
+    ELEM(A, 0, 3) = -ELEM(A, 0, 2);
+    ELEM(A, 1, 1) = 1.f;
+    ELEM(A, 1, 2) = configALTITUDE_KF_LOOP_TIME_S;
+    ELEM(A, 1, 3) = -configALTITUDE_KF_LOOP_TIME_S;
+    ELEM(A, 2, 2) = 1.f;
+    ELEM(A, 3, 3) = 1.f;
+    ELEM(B, 2, 0) = 1.f;
+    ELEM(B, 3, 1) = 1.f;
+    // ELEM(Q, 0, 0) = 0.36f;
+    // ELEM(Q, 1, 1) = 0.05f;
+    ELEM(Qe, 2, 2) = configALTITUDE_KF_AZ_STATE_NOISE;
+    ELEM(Qe, 3, 3) = configALTITUDE_KF_B_AZ_NOISE;
+    ELEM(C, 0, 0) = 1.f;
+    ELEM(C, 1, 2) = 1.f;
+    ELEM(R, 0, 0) = configALTITUDE_KF_H_NOISE;
+    ELEM(R, 1, 1) = configALTITUDE_KF_AZ_MEAS_NOISE;
+
+#if (configUSE_ALT_TOF != configTOF_DISABLE) && defined(configALTITUDE_KF_USE_VELD_CORRECTION)
+    ELEM(C, 2, 1) = 1.f;
+    ELEM(C, 3, 1) = 1.f;
+    ELEM(R, 2, 2) = configALTITUDE_KF_LIDAR_NOISE;
+    ELEM(R, 3, 3) = configALTITUDE_KF_VD_NOISE;
+#elif (configUSE_ALT_TOF != configTOF_DISABLE)
+    ELEM(C, 2, 1) = 1.f;
+    ELEM(R, 2, 2) = configALTITUDE_KF_LIDAR_NOISE;
+#elif defined(configALTITUDE_KF_USE_VELD_CORRECTION)
+    ELEM(C, 2, 1) = 1.f;
+    ELEM(R, 2, 2) = configALTITUDE_KF_VD_NOISE;
+#endif
+
+    matrixTrans(&A, &tmp1);
+    matrixTrans(&C, &tmp2);
+    //QuadProd(&B, &Q, &Qe);
+
+    /* Calculate discrete-time Riccati equation solution */
+    if (DARE(&tmp1, &tmp2, &Qe, &R, 1000, 1e-5f, &P) != UTILS_STATUS_SUCCESS) {
+        while (1) {};
+    }
+
+    /* Calculation of K = A*P*C.'*inverse(C*H*C.'+R); */
+    QuadProd(&C, &P, &tmp3);
+    matrixAdd(&tmp3, &R, &tmp3);
+    matrixInversed(&tmp3, &tmp4);
+    matrixMult(&A, &P, &tmp1);
+    matrixMult_rhsT(&tmp1, &C, &tmp2);
+    matrixMult(&tmp2, &tmp4, &K);
+
+    /* Delete temporary matrices */
+    matrixDelete(&A);
+    matrixDelete(&B);
+    matrixDelete(&C);
+    //matrixDelete(&Q);
+    matrixDelete(&Qe);
+    matrixDelete(&R);
+    matrixDelete(&P);
+    matrixDelete(&tmp1);
+    matrixDelete(&tmp2);
+    matrixDelete(&tmp3);
+    matrixDelete(&tmp4);
+
     return;
 }
 
@@ -289,10 +384,10 @@ void altitudeKF_updateBaroAccel(altitudeState_t* altState, float press, axis3f_t
     }
 
     /* Apply correction */
-    altState->alt += configALTITUDE_KF_L_HH * delta_baroAltitude - configALTITUDE_KF_L_HA * delta_accelDown;
-    altState->RoC += configALTITUDE_KF_L_VH * delta_baroAltitude - configALTITUDE_KF_L_VA * delta_accelDown;
-    altState->vAcc += configALTITUDE_KF_L_AH * delta_baroAltitude - configALTITUDE_KF_L_AA * delta_accelDown;
-    altState->b_vAcc += configALTITUDE_KF_L_BH * delta_baroAltitude - configALTITUDE_KF_L_BA * delta_accelDown;
+    altState->alt += matrixGet(&K, 0, 0) * delta_baroAltitude - matrixGet(&K, 0, 1) * delta_accelDown;
+    altState->RoC += matrixGet(&K, 1, 0) * delta_baroAltitude - matrixGet(&K, 1, 1) * delta_accelDown;
+    altState->vAcc += matrixGet(&K, 2, 0) * delta_baroAltitude - matrixGet(&K, 2, 1) * delta_accelDown;
+    altState->b_vAcc += matrixGet(&K, 3, 0) * delta_baroAltitude - matrixGet(&K, 3, 1) * delta_accelDown;
 
     return;
 }
@@ -308,10 +403,10 @@ void altitudeKF_updateLIDAR(altitudeState_t* altState, float ToFAlt, axis3f_t an
         && (fabsf(angles.y) <= configALTITUDE_KF_MAX_LIDAR_ROLL_PITCH)) {
         float delta_LIDARRoC = (LIDAR_diff.output - altState->_RoCPred) * configALTITUDE_KF_LIDAR_UPDATE_TIME_S
                                / configALTITUDE_KF_LOOP_TIME_S;
-        altState->alt += configALTITUDE_KF_L_HL * delta_LIDARRoC;
-        altState->RoC += configALTITUDE_KF_L_VL * delta_LIDARRoC;
-        altState->vAcc += configALTITUDE_KF_L_AL * delta_LIDARRoC;
-        altState->b_vAcc += configALTITUDE_KF_L_BL * delta_LIDARRoC;
+        altState->alt += matrixGet(&K, 0, 2) * delta_LIDARRoC;
+        altState->RoC += matrixGet(&K, 1, 2) * delta_LIDARRoC;
+        altState->vAcc += matrixGet(&K, 2, 2) * delta_LIDARRoC;
+        altState->b_vAcc += matrixGet(&K, 3, 2) * delta_LIDARRoC;
     }
 }
 #endif
@@ -319,10 +414,10 @@ void altitudeKF_updateLIDAR(altitudeState_t* altState, float ToFAlt, axis3f_t an
 #ifdef configALTITUDE_KF_USE_VELD_CORRECTION
 void altitudeKF_updateVelD(altitudeState_t* altState, axis3f_t velocities, axis3f_t angles) {
     float delta_velD = (altitudeKFVelDownCalc(velocities, angles) + altState->_RoCPred);
-    altState->alt -= configALTITUDE_KF_L_HV * delta_velD;
-    altState->RoC -= configALTITUDE_KF_L_VV * delta_velD;
-    altState->vAcc -= configALTITUDE_KF_L_AV * delta_velD;
-    altState->b_vAcc -= configALTITUDE_KF_L_BV * delta_velD;
+    altState->alt -= matrixGet(&K, 0, configALTITUDE_KF_NMEAS - 1) * delta_velD;
+    altState->RoC -= matrixGet(&K, 1, configALTITUDE_KF_NMEAS - 1) * delta_velD;
+    altState->vAcc -= matrixGet(&K, 2, configALTITUDE_KF_NMEAS - 1) * delta_velD;
+    altState->b_vAcc -= matrixGet(&K, 3, configALTITUDE_KF_NMEAS - 1) * delta_velD;
 }
 #endif
 

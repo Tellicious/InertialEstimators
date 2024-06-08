@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.3.0
+
+**New features:**
+- Added Kalman filter gain calculation during initialization to `altitudeKF`, using the `DARE` function from ADV-Utils v1.13.0
+
 ## v1.2.3
 
 **Bugfix:**
