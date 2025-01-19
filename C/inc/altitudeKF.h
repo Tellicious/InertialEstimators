@@ -52,6 +52,9 @@ extern "C" {
 /* Choose whether to use accelerometer high-pass filtering */
 // #define configALTITUDE_KF_ACC_HP_FILTER
 
+/* Choose whether to detect and correct ground effect */
+// #define configALTITUDE_KF_DETECT_GROUND_EFFECT
+
 /* Choose whether to use ACC_D for altitude correction (calculated according to attitude) or ACC_Z raw */
 // #define configALTITUDE_KF_USE_ACC_D
 
@@ -80,6 +83,31 @@ extern "C" {
 /* Deadband of ACC_D, in m/s^2 */
 #ifndef configALTITUDE_KF_ACCEL_D_DEADBAND
 #define configALTITUDE_KF_ACCEL_D_DEADBAND 0.03f
+#endif
+
+/* Maximum baro rate of climb above which measurements are not reliable, in m/s - for ground effect detection */
+#ifndef configALTITUDE_KF_MAX_BARO_ROC
+#define configALTITUDE_KF_MAX_BARO_ROC 2.0f
+#endif
+
+/* Threshold baro rate of climb below which measurements are reliable, in m/s - for ground effect detection */
+#ifndef configALTITUDE_KF_THRESHOLD_BARO_ROC
+#define configALTITUDE_KF_THRESHOLD_BARO_ROC 0.7f
+#endif
+
+/* Baro derivative filter constant - for ground effect detection */
+#ifndef configALTITUDE_KF_BARO_DIFF_ND
+#define configALTITUDE_KF_BARO_DIFF_ND 12.f
+#endif
+
+/* Ground effect counter maximum value - for ground effect detection */
+#ifndef configALTITUDE_KF_GND_EFF_COUNT_MAX
+#define configALTITUDE_KF_GND_EFF_COUNT_MAX 9
+#endif
+
+/* Ground effect counter increase per step when baro RoC is above maximum value - for ground effect detection */
+#ifndef configALTITUDE_KF_GND_EFF_INCR
+#define configALTITUDE_KF_GND_EFF_INCR 3
 #endif
 
 /* LIDAR sample time, in s */

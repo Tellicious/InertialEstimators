@@ -39,7 +39,7 @@
 #include "numMethods.h"
 #include "string.h"
 
-#if defined(configALTITUDE_KF_ACC_HP_FILTER) || (configUSE_ALT_TOF != configTOF_DISABLE)
+#if defined(configALTITUDE_KF_ACC_HP_FILTER) || (configUSE_ALT_TOF != configTOF_DISABLE) || defined(configALTITUDE_KF_DETECT_GROUND_EFFECT)
 #include "IIRFilters.h"
 #endif
 
@@ -107,6 +107,10 @@ IIRFilterGeneric_t HPFilt_accD;
 
 #if (configUSE_ALT_TOF != configTOF_DISABLE)
 IIRFilterDerivative_t LIDAR_diff;
+#endif
+
+#ifdef configALTITUDE_KF_DETECT_GROUND_EFFECT
+IIRFilterDerivative_t baro_diff;
 #endif
 
 /* Private functions ---------------------------------------------------------*/
@@ -219,8 +223,7 @@ static float altitudeKFAccelDownCalc(axis3f_t accel, float b_az, axis3f_t angles
     float accD;
 #if defined(configALTITUDE_KF_USE_ACC_D)
     //transform accel_z into accel_D
-    accD = (constG - accel.x * SIN(angles.y) + accel.y * COS(angles.y) * SIN(angles.x)
-            + (accel.z - b_az) * COS(angles.y) * COS(angles.x));
+    accD = (constG - accel.x * SIN(angles.y) + accel.y * COS(angles.y) * SIN(angles.x) + (accel.z - b_az) * COS(angles.y) * COS(angles.x));
 #else
     accD = (constG + accel.z - b_az);
 #endif
@@ -272,6 +275,11 @@ void altitudeKF_init(altitudeState_t* altState, float pressGround, float tempGro
     /* Initialize derivative calculation for vertical speed estimation */
 #if (configUSE_ALT_TOF != configTOF_DISABLE)
     IIRFilterDerivativeInit(&LIDAR_diff, configALTITUDE_KF_LIDAR_DIFF_ND, configALTITUDE_KF_LIDAR_UPDATE_TIME_S * 1e3f);
+#endif
+
+    /* Initialize derivative calculation for barometer vertical speed estimation */
+#ifdef configALTITUDE_KF_DETECT_GROUND_EFFECT
+    IIRFilterDerivativeInit(&baro_diff, configALTITUDE_KF_BARO_DIFF_ND, configALTITUDE_KF_LOOP_TIME_S * 1e3f);
 #endif
 
     /* Calculate Kalman filter gain */
@@ -359,9 +367,8 @@ void altitudeKF_init(altitudeState_t* altState, float pressGround, float tempGro
 
 void altitudeKF_prediction(altitudeState_t* altState) {
     /* Predict state */
-    altState->alt +=
-        configALTITUDE_KF_LOOP_TIME_S * altState->RoC
-        + 0.5 * configALTITUDE_KF_LOOP_TIME_S * configALTITUDE_KF_LOOP_TIME_S * (altState->vAcc - altState->b_vAcc);
+    altState->alt += configALTITUDE_KF_LOOP_TIME_S * altState->RoC
+                     + 0.5 * configALTITUDE_KF_LOOP_TIME_S * configALTITUDE_KF_LOOP_TIME_S * (altState->vAcc - altState->b_vAcc);
 
     altState->RoC += configALTITUDE_KF_LOOP_TIME_S * (altState->vAcc - altState->b_vAcc);
 
@@ -374,12 +381,35 @@ void altitudeKF_prediction(altitudeState_t* altState) {
 }
 
 void altitudeKF_updateBaroAccel(altitudeState_t* altState, float press, axis3f_t accel, float b_az, axis3f_t angles) {
+
+    /* Calculate baro altitude and downwards acceleration */
+    float baroAlt = altitudeCalculation(press);
+    float accelDown = altitudeKFAccelDownCalc(accel, b_az, angles);
+
     /* Calculate delta measures */
-    float delta_baroAltitude = altitudeCalculation(press) - altState->_altPred;
-    float delta_accelDown = altitudeKFAccelDownCalc(accel, b_az, angles) + altState->_vAccPred;
+    float delta_baroAltitude = baroAlt - altState->_altPred;
+    float delta_accelDown = accelDown + altState->_vAccPred;
+
+#ifdef configALTITUDE_KF_DETECT_GROUND_EFFECT
+    static uint8_t groundEffectCounter = 0;
+    float abs_baroRoC = fabsf(IIRFilterDerivativeProcess(&baro_diff, baroAlt));
+
+    /* Detect ground effect based on baro RoC */
+    if (abs_baroRoC > configALTITUDE_KF_MAX_BARO_ROC && (groundEffectCounter < configALTITUDE_KF_GND_EFF_COUNT_MAX)) {
+        groundEffectCounter += configALTITUDE_KF_GND_EFF_INCR;
+        if (groundEffectCounter > configALTITUDE_KF_GND_EFF_COUNT_MAX) {
+            groundEffectCounter = configALTITUDE_KF_GND_EFF_COUNT_MAX;
+        }
+    } else if ((abs_baroRoC < configALTITUDE_KF_THRESHOLD_BARO_ROC) && (groundEffectCounter > 0)) {
+        groundEffectCounter--;
+    }
+
+    /* Apply progressive barometer correction reduction */
+    delta_baroAltitude *= (1.0f - (float)groundEffectCounter / configALTITUDE_KF_GND_EFF_COUNT_MAX);
+#endif /* configALTITUDE_KF_DETECT_GROUND_EFFECT */
 
     /* Correct with accelerometer only if measured value is within allowed range */
-    if (fabsf(delta_accelDown) > configALTITUDE_KF_MAX_ACCEL_DOWN) {
+    if (fabsf(accelDown) > configALTITUDE_KF_MAX_ACCEL_DOWN) {
         delta_accelDown = 0;
     }
 
@@ -398,11 +428,9 @@ void altitudeKF_updateLIDAR(altitudeState_t* altState, float ToFAlt, axis3f_t an
     IIRFilterDerivativeProcess(&LIDAR_diff, (ToFAlt * COS(angles.y) * COS(angles.x)));
 
     /* Correct with LIDAR only if measured altitude and current attitude are within allowed range */
-    if ((LIDAR_diff.output < configALTITUDE_KF_MAX_LIDAR_ROC)
-        && (fabsf(angles.x) <= configALTITUDE_KF_MAX_LIDAR_ROLL_PITCH)
+    if ((LIDAR_diff.output < configALTITUDE_KF_MAX_LIDAR_ROC) && (fabsf(angles.x) <= configALTITUDE_KF_MAX_LIDAR_ROLL_PITCH)
         && (fabsf(angles.y) <= configALTITUDE_KF_MAX_LIDAR_ROLL_PITCH)) {
-        float delta_LIDARRoC = (LIDAR_diff.output - altState->_RoCPred) * configALTITUDE_KF_LIDAR_UPDATE_TIME_S
-                               / configALTITUDE_KF_LOOP_TIME_S;
+        float delta_LIDARRoC = (LIDAR_diff.output - altState->_RoCPred) * configALTITUDE_KF_LIDAR_UPDATE_TIME_S / configALTITUDE_KF_LOOP_TIME_S;
         altState->alt += matrixGet(&K, 0, 2) * delta_LIDARRoC;
         altState->RoC += matrixGet(&K, 1, 2) * delta_LIDARRoC;
         altState->vAcc += matrixGet(&K, 2, 2) * delta_LIDARRoC;
