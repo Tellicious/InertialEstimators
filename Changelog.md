@@ -4,6 +4,7 @@
 
 **New features:**
 - Added Kalman filter gain calculation during initialization to `altitudeKF`, using the `DARE` function from ADV-Utils v1.13.0
+- Added ground effect detection and correction to `altitudeKF` by defining `configALTITUDE_KF_DETECT_GROUND_EFFECT`
 
 ## v1.2.3
 
