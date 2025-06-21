@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.3.1
+
+**Bugfix:**
+- Corrected a bug in `altitudeKF` LIDAR correction by adding a missing `fasbf`
+
 ## v1.3.0
 
 **New features:**
