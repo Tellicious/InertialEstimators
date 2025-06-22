@@ -125,14 +125,14 @@ extern "C" {
 #define configALTITUDE_KF_MAX_LIDAR_ROC 1.f
 #endif
 
+/* LIDAR derivative filter constant */
+#ifndef configALTITUDE_KF_LIDAR_DIFF_ND
+#define configALTITUDE_KF_LIDAR_DIFF_ND 15.f
+#endif
+
 /* Maximum Roll and Pitch to use LIDAR for correction, in rad */
 #ifndef configALTITUDE_KF_MAX_LIDAR_ROLL_PITCH
 #define configALTITUDE_KF_MAX_LIDAR_ROLL_PITCH 0.4f
-#endif
-
-/* LIDAR derivative filter constant */
-#ifndef configALTITUDE_KF_LIDAR_DIFF_ND
-#define configALTITUDE_KF_LIDAR_DIFF_ND 25.f
 #endif
 
 /* Accelerometer high-pass filter frequency, in Hz*/

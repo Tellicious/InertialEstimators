@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.3.2
+
+**Bugfix:**
+- Formatting fix in `altitudeKF`
+
 ## v1.3.1
 
 **Bugfix:**
