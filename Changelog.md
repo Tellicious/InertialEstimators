@@ -3,6 +3,7 @@
 ## v1.3.2
 
 **Bugfix:**
+- Fixed `altitudeKF` noises discretization logic
 - Formatting fix in `altitudeKF`
 
 ## v1.3.1
