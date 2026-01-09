@@ -143,32 +143,32 @@ extern "C" {
 /* Altitude KF noises */
 /* Accel z state noise */
 #ifndef configALTITUDE_KF_AZ_STATE_NOISE
-#define configALTITUDE_KF_AZ_STATE_NOISE 0.36f
+#define configALTITUDE_KF_AZ_STATE_NOISE 72.f
 #endif
 
 /* Bias acc z noise */
 #ifndef configALTITUDE_KF_B_AZ_NOISE
-#define configALTITUDE_KF_B_AZ_NOISE 0.05f
+#define configALTITUDE_KF_B_AZ_NOISE 10.f
 #endif
 
 /* Accel z meas noise */
 #ifndef configALTITUDE_KF_AZ_MEAS_NOISE
-#define configALTITUDE_KF_AZ_MEAS_NOISE 70.f
+#define configALTITUDE_KF_AZ_MEAS_NOISE 0.35f
 #endif
 
 /* Altitude meas noise */
 #ifndef configALTITUDE_KF_H_NOISE
-#define configALTITUDE_KF_H_NOISE 100.f
+#define configALTITUDE_KF_H_NOISE 5.f
 #endif
 
 /* LIDAR meas noise */
 #ifndef configALTITUDE_KF_LIDAR_NOISE
-#define configALTITUDE_KF_LIDAR_NOISE 80.f
+#define configALTITUDE_KF_LIDAR_NOISE 0.4f
 #endif
 
 /* Velocity d global noise (pointing down) */
 #ifndef configALTITUDE_KF_VD_NOISE
-#define configALTITUDE_KF_VD_NOISE 80.f
+#define configALTITUDE_KF_VD_NOISE 0.4f
 #endif
 
 /* Typedefs ------------------------------------------------------------------*/

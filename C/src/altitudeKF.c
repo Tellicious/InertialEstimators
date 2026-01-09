@@ -312,24 +312,24 @@ void altitudeKF_init(altitudeState_t* altState, float pressGround, float tempGro
     ELEM(B, 3, 1) = 1.f;
     // ELEM(Q, 0, 0) = 0.36f;
     // ELEM(Q, 1, 1) = 0.05f;
-    ELEM(Qe, 2, 2) = configALTITUDE_KF_AZ_STATE_NOISE;
-    ELEM(Qe, 3, 3) = configALTITUDE_KF_B_AZ_NOISE;
+    ELEM(Qe, 2, 2) = configALTITUDE_KF_AZ_STATE_NOISE * configALTITUDE_KF_LOOP_TIME_S;
+    ELEM(Qe, 3, 3) = configALTITUDE_KF_B_AZ_NOISE * configALTITUDE_KF_LOOP_TIME_S;
     ELEM(C, 0, 0) = 1.f;
     ELEM(C, 1, 2) = 1.f;
-    ELEM(R, 0, 0) = configALTITUDE_KF_H_NOISE;
-    ELEM(R, 1, 1) = configALTITUDE_KF_AZ_MEAS_NOISE;
+    ELEM(R, 0, 0) = configALTITUDE_KF_H_NOISE / configALTITUDE_KF_LOOP_TIME_S;
+    ELEM(R, 1, 1) = configALTITUDE_KF_AZ_MEAS_NOISE / configALTITUDE_KF_LOOP_TIME_S;
 
 #if (configUSE_ALT_TOF != configTOF_DISABLE) && defined(configALTITUDE_KF_USE_VELD_CORRECTION)
     ELEM(C, 2, 1) = 1.f;
     ELEM(C, 3, 1) = 1.f;
-    ELEM(R, 2, 2) = configALTITUDE_KF_LIDAR_NOISE;
-    ELEM(R, 3, 3) = configALTITUDE_KF_VD_NOISE;
+    ELEM(R, 2, 2) = configALTITUDE_KF_LIDAR_NOISE / configALTITUDE_KF_LOOP_TIME_S;
+    ELEM(R, 3, 3) = configALTITUDE_KF_VD_NOISE / configALTITUDE_KF_LOOP_TIME_S;
 #elif (configUSE_ALT_TOF != configTOF_DISABLE)
     ELEM(C, 2, 1) = 1.f;
-    ELEM(R, 2, 2) = configALTITUDE_KF_LIDAR_NOISE;
+    ELEM(R, 2, 2) = configALTITUDE_KF_LIDAR_NOISE / configALTITUDE_KF_LOOP_TIME_S;
 #elif defined(configALTITUDE_KF_USE_VELD_CORRECTION)
     ELEM(C, 2, 1) = 1.f;
-    ELEM(R, 2, 2) = configALTITUDE_KF_VD_NOISE;
+    ELEM(R, 2, 2) = configALTITUDE_KF_VD_NOISE / configALTITUDE_KF_LOOP_TIME_S;
 #endif
 
     matrixTrans(&A, &tmp1);
@@ -367,8 +367,7 @@ void altitudeKF_init(altitudeState_t* altState, float pressGround, float tempGro
 
 void altitudeKF_prediction(altitudeState_t* altState) {
     /* Predict state */
-    altState->alt += configALTITUDE_KF_LOOP_TIME_S * altState->RoC
-                     + 0.5 * configALTITUDE_KF_LOOP_TIME_S * configALTITUDE_KF_LOOP_TIME_S * (altState->vAcc - altState->b_vAcc);
+    altState->alt += configALTITUDE_KF_LOOP_TIME_S * altState->RoC + 0.5 * configALTITUDE_KF_LOOP_TIME_S * configALTITUDE_KF_LOOP_TIME_S * (altState->vAcc - altState->b_vAcc);
 
     altState->RoC += configALTITUDE_KF_LOOP_TIME_S * (altState->vAcc - altState->b_vAcc);
 
@@ -428,8 +427,7 @@ void altitudeKF_updateLIDAR(altitudeState_t* altState, float ToFAlt, axis3f_t an
     IIRFilterDerivativeProcess(&LIDAR_diff, (ToFAlt * COS(angles.y) * COS(angles.x)));
 
     /* Correct with LIDAR only if measured altitude and current attitude are within allowed range */
-    if ((fabsf(LIDAR_diff.output) <= configALTITUDE_KF_MAX_LIDAR_ROC) && (fabsf(angles.x) <= configALTITUDE_KF_MAX_LIDAR_ROLL_PITCH)
-        && (fabsf(angles.y) <= configALTITUDE_KF_MAX_LIDAR_ROLL_PITCH)) {
+    if ((fabsf(LIDAR_diff.output) <= configALTITUDE_KF_MAX_LIDAR_ROC) && (fabsf(angles.x) <= configALTITUDE_KF_MAX_LIDAR_ROLL_PITCH) && (fabsf(angles.y) <= configALTITUDE_KF_MAX_LIDAR_ROLL_PITCH)) {
         float delta_LIDARRoC = (LIDAR_diff.output - altState->_RoCPred) * configALTITUDE_KF_LIDAR_UPDATE_TIME_S / configALTITUDE_KF_LOOP_TIME_S;
         altState->alt += matrixGet(&K, 0, 2) * delta_LIDARRoC;
         altState->RoC += matrixGet(&K, 1, 2) * delta_LIDARRoC;
