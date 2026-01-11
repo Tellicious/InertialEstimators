@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.4.0
+
+**Improvements:**
+- Removed ToF attitude correction from `altitudeKF` as it must be performed before passing the data
+
 ## v1.3.2
 
 **Bugfix:**
