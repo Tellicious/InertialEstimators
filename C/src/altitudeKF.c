@@ -424,7 +424,7 @@ void altitudeKF_updateBaroAccel(altitudeState_t* altState, float press, axis3f_t
 #if (configUSE_ALT_TOF != configTOF_DISABLE)
 void altitudeKF_updateLIDAR(altitudeState_t* altState, float ToFAlt, axis3f_t angles) {
     /* Differentiate LIDAR reading to obtain vertical speed */
-    IIRFilterDerivativeProcess(&LIDAR_diff, (ToFAlt * COS(angles.y) * COS(angles.x)));
+    IIRFilterDerivativeProcess(&LIDAR_diff, ToFAlt);
 
     /* Correct with LIDAR only if measured altitude and current attitude are within allowed range */
     if ((fabsf(LIDAR_diff.output) <= configALTITUDE_KF_MAX_LIDAR_ROC) && (fabsf(angles.x) <= configALTITUDE_KF_MAX_LIDAR_ROLL_PITCH) && (fabsf(angles.y) <= configALTITUDE_KF_MAX_LIDAR_ROLL_PITCH)) {
