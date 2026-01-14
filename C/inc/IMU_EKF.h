@@ -70,6 +70,11 @@ extern "C" {
 #error configIMU_EKF_LOOP_TIME_S must be defined
 #endif
 
+/* Vel X, Y correction loop time, in s */
+#ifndef configIMU_EKF_VXY_UPDATE_TIME_S
+#error configIMU_EKF_VXY_UPDATE_TIME_S must be defined
+#endif
+
 /* IMU EKF noises */
 /* Gyro x,y noise */
 #ifndef configIMU_EKF_GXY_NOISE
