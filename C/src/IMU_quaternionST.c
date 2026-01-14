@@ -60,18 +60,6 @@ void IMU_quaternionST_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro, IM
     ayf = accel.y;
     azf = accel.z;
 
-#ifdef configIMU_QUATERNIONST_CORRECT_ACCEL_OFFSET
-    axf += ((gyro.y * gyro.y + gyro.z * gyro.z) * configIMU_QUATERNIONST_ACCEL_OFFSET_X)
-           - (gyro.x * gyro.y * configIMU_QUATERNIONST_ACCEL_OFFSET_Y)
-           - (gyro.x * gyro.z * configIMU_QUATERNIONST_ACCEL_OFFSET_Z);
-    ayf += ((gyro.x * gyro.x + gyro.z * gyro.z) * configIMU_QUATERNIONST_ACCEL_OFFSET_Y)
-           - (gyro.x * gyro.y * configIMU_QUATERNIONST_ACCEL_OFFSET_X)
-           - (gyro.y * gyro.z * configIMU_QUATERNIONST_ACCEL_OFFSET_Z);
-    azf += ((gyro.x * gyro.x + gyro.y * gyro.y) * configIMU_QUATERNIONST_ACCEL_OFFSET_Z)
-           - (gyro.x * gyro.y * configIMU_QUATERNIONST_ACCEL_OFFSET_X)
-           - (gyro.y * gyro.z * configIMU_QUATERNIONST_ACCEL_OFFSET_Y);
-#endif
-
     gxf = gyro.x;
     gyf = gyro.y;
     gzf = gyro.z;

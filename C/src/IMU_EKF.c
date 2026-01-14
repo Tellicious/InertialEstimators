@@ -40,16 +40,15 @@
 
 /* Private variables ---------------------------------------------------------*/
 
-static matrix_t
-    IMU_EKF_u; //state vector (Roll=Phi, Pitch=Theta, Xd, Yd, Zd, c_damp, b_az) angles in rad, angular velocities in rad/s, velocities in m/s, c_damp in N*s/m
-static matrix_t _A; //state matrix
-static matrix_t _B; //input matrix
-static matrix_t _C; //output matrix
-static matrix_t _P; //expected errors value matrix
-static matrix_t _W; //gyro and acc_z noises covariance matrix (gx, gy, gz, az, c_damp, b_az)
-static matrix_t _R; //acc_x and acc_y noises covariance matrix
-static matrix_t _M; //temporary matrix
-static matrix_t _K; //gain matrix
+static matrix_t IMU_EKF_u; //state vector (Roll=Phi, Pitch=Theta, Xd, Yd, Zd, c_damp, b_az) angles in rad, angular velocities in rad/s, velocities in m/s, c_damp in N*s/m
+static matrix_t _A;        //state matrix
+static matrix_t _B;        //input matrix
+static matrix_t _C;        //output matrix
+static matrix_t _P;        //expected errors value matrix
+static matrix_t _W;        //gyro and acc_z noises covariance matrix (gx, gy, gz, az, c_damp, b_az)
+static matrix_t _R;        //acc_x and acc_y noises covariance matrix
+static matrix_t _M;        //temporary matrix
+static matrix_t _K;        //gain matrix
 
 /* Support and temporary variables */
 static float _r_vxy, _r_vz, _r_vd; //velocities noise covariances
@@ -165,20 +164,11 @@ void IMU_EKF_prediction(float az, axis3f_t gyro) {
     QuadProd(&_B, &_W, &TMP4);
     matrixAdd(&TMP4, &_P, &_P);
 
-#ifdef configIMU_EKF_CORRECT_ACCEL_OFFSET
-    az += ((gyro.x * gyro.x + gyro.y * gyro.y) * configIMU_EKF_ACCEL_OFFSET_Z)
-          - (gyro.x * gyro.y * configIMU_EKF_ACCEL_OFFSET_X) - (gyro.y * gyro.z * configIMU_EKF_ACCEL_OFFSET_Y);
-#endif
-
     /* Predict state */
     ELEM(IMU_EKF_u, 0, 0) += configIMU_EKF_LOOP_TIME_S * (gyro.x + tmp1 * tTheta);
     ELEM(IMU_EKF_u, 1, 0) += configIMU_EKF_LOOP_TIME_S * tmp2;
-    delta_u2 = configIMU_EKF_LOOP_TIME_S
-               * (ELEM(IMU_EKF_u, 3, 0) * gyro.z - ELEM(IMU_EKF_u, 4, 0) * gyro.y
-                  - ELEM(IMU_EKF_u, 5, 0) * ELEM(IMU_EKF_u, 2, 0) - constG * sTheta);
-    delta_u3 = configIMU_EKF_LOOP_TIME_S
-               * (ELEM(IMU_EKF_u, 4, 0) * gyro.x - ELEM(IMU_EKF_u, 2, 0) * gyro.z
-                  - ELEM(IMU_EKF_u, 5, 0) * ELEM(IMU_EKF_u, 3, 0) + constG * sPhi * cTheta);
+    delta_u2 = configIMU_EKF_LOOP_TIME_S * (ELEM(IMU_EKF_u, 3, 0) * gyro.z - ELEM(IMU_EKF_u, 4, 0) * gyro.y - ELEM(IMU_EKF_u, 5, 0) * ELEM(IMU_EKF_u, 2, 0) - constG * sTheta);
+    delta_u3 = configIMU_EKF_LOOP_TIME_S * (ELEM(IMU_EKF_u, 4, 0) * gyro.x - ELEM(IMU_EKF_u, 2, 0) * gyro.z - ELEM(IMU_EKF_u, 5, 0) * ELEM(IMU_EKF_u, 3, 0) + constG * sPhi * cTheta);
     ELEM(IMU_EKF_u, 2, 0) += delta_u2;
     ELEM(IMU_EKF_u, 3, 0) += delta_u3;
     ELEM(IMU_EKF_u, 4, 0) += configIMU_EKF_LOOP_TIME_S * (az - ELEM(IMU_EKF_u, 6, 0) + constG * cPhi * cTheta);
@@ -193,13 +183,6 @@ void IMU_EKF_updateAccelGyro(axis3f_t* angles, axis3f_t* velocities, axis3f_t ac
     matrix_t deltaM;
     matrixInit(&deltaM, 2, 1);
 
-#ifdef configIMU_EKF_CORRECT_ACCEL_OFFSET
-    accel.x += ((gyro.y * gyro.y + gyro.z * gyro.z) * configIMU_EKF_ACCEL_OFFSET_X)
-               - (gyro.x * gyro.y * configIMU_EKF_ACCEL_OFFSET_Y) - (gyro.x * gyro.z * configIMU_EKF_ACCEL_OFFSET_Z);
-    accel.y += ((gyro.x * gyro.x + gyro.z * gyro.z) * configIMU_EKF_ACCEL_OFFSET_Y)
-               - (gyro.x * gyro.y * configIMU_EKF_ACCEL_OFFSET_X) - (gyro.y * gyro.z * configIMU_EKF_ACCEL_OFFSET_Z);
-#endif
-
     /* C matrix */
     //_C.zeros(); //zeros or not?
     ELEM(_C, 0, 2) = -ELEM(IMU_EKF_u, 5, 0);
@@ -212,10 +195,8 @@ void IMU_EKF_updateAccelGyro(axis3f_t* angles, axis3f_t* velocities, axis3f_t ac
     ELEM(_C, 1, 5) = -ELEM(IMU_EKF_u, 3, 0);
 
     /* Delta measures */
-    ELEM(deltaM, 0, 0) = accel.x + ELEM(IMU_EKF_u, 4, 0) * gyro.y - ELEM(IMU_EKF_u, 3, 0) * gyro.z
-                         + ELEM(IMU_EKF_u, 5, 0) * ELEM(IMU_EKF_u, 2, 0);
-    ELEM(deltaM, 1, 0) = accel.y + ELEM(IMU_EKF_u, 2, 0) * gyro.z - ELEM(IMU_EKF_u, 4, 0) * gyro.x
-                         + ELEM(IMU_EKF_u, 5, 0) * ELEM(IMU_EKF_u, 3, 0);
+    ELEM(deltaM, 0, 0) = accel.x + ELEM(IMU_EKF_u, 4, 0) * gyro.y - ELEM(IMU_EKF_u, 3, 0) * gyro.z + ELEM(IMU_EKF_u, 5, 0) * ELEM(IMU_EKF_u, 2, 0);
+    ELEM(deltaM, 1, 0) = accel.y + ELEM(IMU_EKF_u, 2, 0) * gyro.z - ELEM(IMU_EKF_u, 4, 0) * gyro.x + ELEM(IMU_EKF_u, 5, 0) * ELEM(IMU_EKF_u, 3, 0);
 
     /* Gain matrix K */
     //_M = QuadProd(_C, _P) + _R;
@@ -378,8 +359,7 @@ void IMU_EKF_updateVelD(axis3f_t* angles, axis3f_t* velocities, float vD, float 
 
     /* C matrix */
     ELEM(C_tmp, 0, 0) = ELEM(IMU_EKF_u, 3, 0) * cPhi * cTheta - ELEM(IMU_EKF_u, 4, 0) * cTheta * sPhi;
-    ELEM(C_tmp, 0, 1) =
-        -ELEM(IMU_EKF_u, 2, 0) * cTheta - ELEM(IMU_EKF_u, 4, 0) * cPhi * sTheta - ELEM(IMU_EKF_u, 3, 0) * sPhi * sTheta;
+    ELEM(C_tmp, 0, 1) = -ELEM(IMU_EKF_u, 2, 0) * cTheta - ELEM(IMU_EKF_u, 4, 0) * cPhi * sTheta - ELEM(IMU_EKF_u, 3, 0) * sPhi * sTheta;
     ELEM(C_tmp, 0, 2) = -sTheta;
     ELEM(C_tmp, 0, 3) = cTheta * sPhi;
     ELEM(C_tmp, 0, 4) = cPhi * cTheta;
@@ -387,9 +367,7 @@ void IMU_EKF_updateVelD(axis3f_t* angles, axis3f_t* velocities, float vD, float 
     ELEM(C_tmp, 0, 6) = 0;
 
     /* Delta measures */
-    float deltaM = -vD
-                   - (ELEM(IMU_EKF_u, 4, 0) * cPhi * cTheta - ELEM(IMU_EKF_u, 2, 0) * sTheta
-                      + ELEM(IMU_EKF_u, 3, 0) * cTheta * sPhi);
+    float deltaM = -vD - (ELEM(IMU_EKF_u, 4, 0) * cPhi * cTheta - ELEM(IMU_EKF_u, 2, 0) * sTheta + ELEM(IMU_EKF_u, 3, 0) * cTheta * sPhi);
 
     /* Gain matrix K */
     //_M = QuadProd(C_tmp,_P) + (_r_vd / dt_s);

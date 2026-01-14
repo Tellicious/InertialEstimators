@@ -82,24 +82,6 @@ Northern Emisphere positive (pointing down), Southern Emisphere negative (pointi
 #error configAHRS_EKF_MAG_LOOP_TIME_S must be defined
 #endif
 
-/* Enable / disable correction of accelerometer offset from CoG */
-// #define configAHRS_EKF_CORRECT_ACCEL_OFFSET
-
-/* Offset from CoG along local x-asix, in m */
-#if defined(configAHRS_EKF_CORRECT_ACCEL_OFFSET) && !defined(configAHRS_EKF_ACCEL_OFFSET_X)
-#define configAHRS_EKF_ACCEL_OFFSET_X 0.f
-#endif
-
-/* Offset from CoG along local y-asix, in m */
-#if defined(configAHRS_EKF_CORRECT_ACCEL_OFFSET) && !defined(configAHRS_EKF_ACCEL_OFFSET_Y)
-#define configAHRS_EKF_ACCEL_OFFSET_Y 0.f
-#endif
-
-/* Offset from CoG along local z-asix, in m */
-#if defined(configAHRS_EKF_CORRECT_ACCEL_OFFSET) && !defined(configAHRS_EKF_ACCEL_OFFSET_Z)
-#define configAHRS_EKF_ACCEL_OFFSET_Z 0.f
-#endif
-
 /* AHRS EKF noises */
 /* Gyro x,y noise */
 #ifndef configAHRS_EKF_GXY_NOISE

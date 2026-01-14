@@ -70,24 +70,6 @@ extern "C" {
 #error configIMU_EKF_LOOP_TIME_S must be defined
 #endif
 
-/* Enable / disable correction of accelerometer offset from CoG */
-// #define configIMU_EKF_CORRECT_ACCEL_OFFSET
-
-/* Offset from CoG along local x-asix, in m */
-#if defined(configIMU_EKF_CORRECT_ACCEL_OFFSET) && !defined(configIMU_EKF_ACCEL_OFFSET_X)
-#define configIMU_EKF_ACCEL_OFFSET_X 0.f
-#endif
-
-/* Offset from CoG along local y-asix, in m */
-#if defined(configIMU_EKF_CORRECT_ACCEL_OFFSET) && !defined(configIMU_EKF_ACCEL_OFFSET_Y)
-#define configIMU_EKF_ACCEL_OFFSET_Y 0.f
-#endif
-
-/* Offset from CoG along local z-asix, in m */
-#if defined(configIMU_EKF_CORRECT_ACCEL_OFFSET) && !defined(configIMU_EKF_ACCEL_OFFSET_Z)
-#define configIMU_EKF_ACCEL_OFFSET_Z 0.f
-#endif
-
 /* IMU EKF noises */
 /* Gyro x,y noise */
 #ifndef configIMU_EKF_GXY_NOISE

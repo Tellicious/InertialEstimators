@@ -41,14 +41,13 @@
 /* Private variables ---------------------------------------------------------*/
 
 static matrix_t
-    AHRS_EKF_u; //(Roll=Phi, Pitch=Theta, Yaw=Psi, Xd, Yd, Zd, c_damp, b_az, incl, bconstGx, bconstGy, bconstGz) angles in rad, angular velocities in rad/s, velocities in m/s, c_damp in N*s/m
+    AHRS_EKF_u;         //(Roll=Phi, Pitch=Theta, Yaw=Psi, Xd, Yd, Zd, c_damp, b_az, incl, bconstGx, bconstGy, bconstGz) angles in rad, angular velocities in rad/s, velocities in m/s, c_damp in N*s/m
 static matrix_t _A;     //state matrix
 static matrix_t _B;     //input matrix
 static matrix_t _C_acc; //acceleration output matrix
 static matrix_t _C_mag; //magnetic field output matrix
 static matrix_t _P;     //expected errors value matrix
-static matrix_t
-    _W; //gyro and acc_z noises covariance matrix (g_x, g_y, g_z, a_z, c_damp, b_az, incl, bconstGx, bconstGy, bconstGz)
+static matrix_t _W;     //gyro and acc_z noises covariance matrix (g_x, g_y, g_z, a_z, c_damp, b_az, incl, bconstGx, bconstGy, bconstGz)
 static matrix_t _R_acc; //acc_x and acc_y noises covariance matrix
 static matrix_t _R_mag; //magnetometer noises covariance matrix
 static matrix_t _M;     //temporary matrix
@@ -207,21 +206,12 @@ void AHRS_EKF_prediction(float az, axis3f_t gyro) {
     QuadProd(&_B, &_W, &TMP4);
     matrixAdd(&TMP4, &_P, &_P);
 
-#ifdef configAHRS_EKF_CORRECT_ACCEL_OFFSET
-    az += ((pr * pr + qr * qr) * configAHRS_EKF_ACCEL_OFFSET_Z) - (pr * qr * configAHRS_EKF_ACCEL_OFFSET_X)
-          - (qr * rr * configAHRS_EKF_ACCEL_OFFSET_Y);
-#endif
-
     /* Predict state */
     ELEM(AHRS_EKF_u, 0, 0) += configAHRS_EKF_LOOP_TIME_S * (pr + tmp1 * tTheta);
     ELEM(AHRS_EKF_u, 1, 0) += configAHRS_EKF_LOOP_TIME_S * tmp2;
     ELEM(AHRS_EKF_u, 2, 0) += configAHRS_EKF_LOOP_TIME_S * tmp1 * inv_cTheta;
-    float delta_u3 = configAHRS_EKF_LOOP_TIME_S
-                     * (ELEM(AHRS_EKF_u, 4, 0) * rr - ELEM(AHRS_EKF_u, 5, 0) * qr
-                        - ELEM(AHRS_EKF_u, 6, 0) * ELEM(AHRS_EKF_u, 3, 0) - constG * sTheta);
-    float delta_u4 = configAHRS_EKF_LOOP_TIME_S
-                     * (ELEM(AHRS_EKF_u, 5, 0) * pr - ELEM(AHRS_EKF_u, 3, 0) * rr
-                        - ELEM(AHRS_EKF_u, 6, 0) * ELEM(AHRS_EKF_u, 4, 0) + constG * sPhi * cTheta);
+    float delta_u3 = configAHRS_EKF_LOOP_TIME_S * (ELEM(AHRS_EKF_u, 4, 0) * rr - ELEM(AHRS_EKF_u, 5, 0) * qr - ELEM(AHRS_EKF_u, 6, 0) * ELEM(AHRS_EKF_u, 3, 0) - constG * sTheta);
+    float delta_u4 = configAHRS_EKF_LOOP_TIME_S * (ELEM(AHRS_EKF_u, 5, 0) * pr - ELEM(AHRS_EKF_u, 3, 0) * rr - ELEM(AHRS_EKF_u, 6, 0) * ELEM(AHRS_EKF_u, 4, 0) + constG * sPhi * cTheta);
     ELEM(AHRS_EKF_u, 3, 0) += delta_u3;
     ELEM(AHRS_EKF_u, 4, 0) += delta_u4;
     ELEM(AHRS_EKF_u, 5, 0) += configAHRS_EKF_LOOP_TIME_S * (az + (constG - ELEM(AHRS_EKF_u, 7, 0)) * cPhi * cTheta);
@@ -244,13 +234,6 @@ void AHRS_EKF_updateAccelGyro(axis3f_t* angles, axis3f_t* velocities, axis3f_t a
     float qr = gyro.y - ELEM(AHRS_EKF_u, 10, 0);
     float rr = gyro.z - ELEM(AHRS_EKF_u, 11, 0);
 
-#ifdef configAHRS_EKF_CORRECT_ACCEL_OFFSET
-    accel.x += ((qr * qr + rr * rr) * configAHRS_EKF_ACCEL_OFFSET_X) - (pr * qr * configAHRS_EKF_ACCEL_OFFSET_Y)
-               - (pr * rr * configAHRS_EKF_ACCEL_OFFSET_Z);
-    accel.y += ((pr * pr + rr * rr) * configAHRS_EKF_ACCEL_OFFSET_Y) - (pr * qr * configAHRS_EKF_ACCEL_OFFSET_X)
-               - (qr * rr * configAHRS_EKF_ACCEL_OFFSET_Z);
-#endif
-
     /* C matrix */
     //_C.zeros(); //zeros or not?
     ELEM(_C_acc, 0, 3) = -ELEM(AHRS_EKF_u, 6, 0);
@@ -263,10 +246,8 @@ void AHRS_EKF_updateAccelGyro(axis3f_t* angles, axis3f_t* velocities, axis3f_t a
     ELEM(_C_acc, 1, 6) = -ELEM(AHRS_EKF_u, 4, 0);
 
     /* Delta measures */
-    ELEM(deltaM, 0, 0) = accel.x + ELEM(AHRS_EKF_u, 5, 0) * qr - ELEM(AHRS_EKF_u, 4, 0) * rr
-                         + ELEM(AHRS_EKF_u, 6, 0) * ELEM(AHRS_EKF_u, 3, 0);
-    ELEM(deltaM, 1, 0) = accel.y + ELEM(AHRS_EKF_u, 3, 0) * rr - ELEM(AHRS_EKF_u, 5, 0) * pr
-                         + ELEM(AHRS_EKF_u, 6, 0) * ELEM(AHRS_EKF_u, 4, 0);
+    ELEM(deltaM, 0, 0) = accel.x + ELEM(AHRS_EKF_u, 5, 0) * qr - ELEM(AHRS_EKF_u, 4, 0) * rr + ELEM(AHRS_EKF_u, 6, 0) * ELEM(AHRS_EKF_u, 3, 0);
+    ELEM(deltaM, 1, 0) = accel.y + ELEM(AHRS_EKF_u, 3, 0) * rr - ELEM(AHRS_EKF_u, 5, 0) * pr + ELEM(AHRS_EKF_u, 6, 0) * ELEM(AHRS_EKF_u, 4, 0);
 
     /* Gain matrix K */
     //_M = QuadProd(_C, _P) + _R;
@@ -547,27 +528,21 @@ void AHRS_EKF_updateVelNE(axis3f_t* angles, axis3f_t* velocities, float vN, floa
     float tmp3 = cPhi * sPsi - cPsi * sPhi * sTheta;
     float tmp4 = cPsi * sPhi - cPhi * sPsi * sTheta;
     ELEM(C_tmp, 0, 0) = ELEM(AHRS_EKF_u, 4, 0) * tmp1 + ELEM(AHRS_EKF_u, 5, 0) * tmp3;
-    ELEM(C_tmp, 0, 1) = ELEM(AHRS_EKF_u, 5, 0) * cPhi * cPsi * cTheta - ELEM(AHRS_EKF_u, 3, 0) * cPsi * sTheta
-                        + ELEM(AHRS_EKF_u, 4, 0) * cPsi * cTheta * sPhi;
-    ELEM(C_tmp, 0, 2) =
-        ELEM(AHRS_EKF_u, 5, 0) * -ELEM(AHRS_EKF_u, 4, 0) * tmp2 - ELEM(AHRS_EKF_u, 3, 0) * cTheta * sPsi;
+    ELEM(C_tmp, 0, 1) = ELEM(AHRS_EKF_u, 5, 0) * cPhi * cPsi * cTheta - ELEM(AHRS_EKF_u, 3, 0) * cPsi * sTheta + ELEM(AHRS_EKF_u, 4, 0) * cPsi * cTheta * sPhi;
+    ELEM(C_tmp, 0, 2) = ELEM(AHRS_EKF_u, 5, 0) * -ELEM(AHRS_EKF_u, 4, 0) * tmp2 - ELEM(AHRS_EKF_u, 3, 0) * cTheta * sPsi;
     ELEM(C_tmp, 0, 3) = cPsi * cTheta;
     ELEM(C_tmp, 0, 4) = -tmp3;
     ELEM(C_tmp, 0, 5) = tmp1;
     ELEM(C_tmp, 1, 0) = -ELEM(AHRS_EKF_u, 4, 0) * tmp4 - ELEM(AHRS_EKF_u, 5, 0) * tmp2;
-    ELEM(C_tmp, 1, 1) = ELEM(AHRS_EKF_u, 5, 0) * cPhi * cTheta * sPsi - ELEM(AHRS_EKF_u, 3, 0) * sPsi * sTheta
-                        + ELEM(AHRS_EKF_u, 4, 0) * cTheta * sPhi * sPsi;
-    ELEM(C_tmp, 1, 2) =
-        ELEM(AHRS_EKF_u, 5, 0) * tmp1 - ELEM(AHRS_EKF_u, 4, 0) * tmp3 + ELEM(AHRS_EKF_u, 3, 0) * cPsi * cTheta;
+    ELEM(C_tmp, 1, 1) = ELEM(AHRS_EKF_u, 5, 0) * cPhi * cTheta * sPsi - ELEM(AHRS_EKF_u, 3, 0) * sPsi * sTheta + ELEM(AHRS_EKF_u, 4, 0) * cTheta * sPhi * sPsi;
+    ELEM(C_tmp, 1, 2) = ELEM(AHRS_EKF_u, 5, 0) * tmp1 - ELEM(AHRS_EKF_u, 4, 0) * tmp3 + ELEM(AHRS_EKF_u, 3, 0) * cPsi * cTheta;
     ELEM(C_tmp, 1, 3) = cTheta * sPsi;
     ELEM(C_tmp, 1, 4) = tmp2;
     ELEM(C_tmp, 1, 5) = tmp4;
 
     /* Delta measures */
-    ELEM(deltaM, 0, 0) =
-        vN - (ELEM(AHRS_EKF_u, 5, 0) * tmp1 - ELEM(AHRS_EKF_u, 4, 0) * tmp3 + ELEM(AHRS_EKF_u, 3, 0) * cPsi * cTheta);
-    ELEM(deltaM, 1, 0) =
-        vE - (ELEM(AHRS_EKF_u, 4, 0) * tmp2 - ELEM(AHRS_EKF_u, 5, 0) * tmp4 + ELEM(AHRS_EKF_u, 3, 0) * cTheta * sPsi);
+    ELEM(deltaM, 0, 0) = vN - (ELEM(AHRS_EKF_u, 5, 0) * tmp1 - ELEM(AHRS_EKF_u, 4, 0) * tmp3 + ELEM(AHRS_EKF_u, 3, 0) * cPsi * cTheta);
+    ELEM(deltaM, 1, 0) = vE - (ELEM(AHRS_EKF_u, 4, 0) * tmp2 - ELEM(AHRS_EKF_u, 5, 0) * tmp4 + ELEM(AHRS_EKF_u, 3, 0) * cTheta * sPsi);
 
     /* Gain matrix K */
     //_M = QuadProd(C_tmp,_P) + R_tmp;
@@ -627,16 +602,13 @@ void AHRS_EKF_updateVelD(axis3f_t* angles, axis3f_t* velocities, float vD, float
     /* C matrix */
     //C_tmp.zeros(); //zeros or not?
     ELEM(C_tmp, 0, 0) = ELEM(AHRS_EKF_u, 4, 0) * cPhi * cTheta - ELEM(AHRS_EKF_u, 5, 0) * cTheta * sPhi;
-    ELEM(C_tmp, 0, 1) = -ELEM(AHRS_EKF_u, 3, 0) * cTheta - ELEM(AHRS_EKF_u, 5, 0) * cPhi * sTheta
-                        - ELEM(AHRS_EKF_u, 4, 0) * sPhi * sTheta;
+    ELEM(C_tmp, 0, 1) = -ELEM(AHRS_EKF_u, 3, 0) * cTheta - ELEM(AHRS_EKF_u, 5, 0) * cPhi * sTheta - ELEM(AHRS_EKF_u, 4, 0) * sPhi * sTheta;
     ELEM(C_tmp, 0, 3) = -sTheta;
     ELEM(C_tmp, 0, 4) = cTheta * sPhi;
     ELEM(C_tmp, 0, 5) = cPhi * cTheta;
 
     /* Delta measures */
-    float deltaM = vD
-                   - (ELEM(AHRS_EKF_u, 5, 0) * cPhi * cTheta - ELEM(AHRS_EKF_u, 3, 0) * sTheta
-                      + ELEM(AHRS_EKF_u, 4, 0) * cTheta * sPhi);
+    float deltaM = vD - (ELEM(AHRS_EKF_u, 5, 0) * cPhi * cTheta - ELEM(AHRS_EKF_u, 3, 0) * sTheta + ELEM(AHRS_EKF_u, 4, 0) * cTheta * sPhi);
 
     /* Gain matrix K */
     //_M = QuadProd(C_tmp,_P) + (_r_vd / dt_s);
