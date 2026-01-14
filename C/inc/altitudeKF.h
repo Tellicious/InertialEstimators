@@ -113,12 +113,6 @@ extern "C" {
 /* LIDAR sample time, in s */
 #ifndef configALTITUDE_KF_LIDAR_UPDATE_TIME_S
 #define configALTITUDE_KF_LIDAR_UPDATE_TIME_S 0.025f
-#endif
-
-/* Maximum altitude to use LIDAR for correction, in mm */
-#ifndef configALTITUDE_KF_MAX_LIDAR_ALT
-#define configALTITUDE_KF_MAX_LIDAR_ALT 3500
-#endif
 
 /* Maximum RoC to use LIDAR for correction, in m/s */
 #ifndef configALTITUDE_KF_MAX_LIDAR_ROC
@@ -129,10 +123,6 @@ extern "C" {
 #ifndef configALTITUDE_KF_LIDAR_DIFF_ND
 #define configALTITUDE_KF_LIDAR_DIFF_ND 15.f
 #endif
-
-/* Maximum Roll and Pitch to use LIDAR for correction, in rad */
-#ifndef configALTITUDE_KF_MAX_LIDAR_ROLL_PITCH
-#define configALTITUDE_KF_MAX_LIDAR_ROLL_PITCH 0.4f
 #endif
 
 /* Accelerometer high-pass filter frequency, in Hz*/
