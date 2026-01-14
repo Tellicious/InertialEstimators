@@ -6,6 +6,7 @@
 - Removed accelerometer offset correction from attitude estimators as it must be performed before passing the data
 - Removed ToF data validity checks from `altitudeKF` as they must be performed before passing the data
 - Removed ToF attitude correction from `altitudeKF` as it must be performed before passing the data
+- Added velocity X and Y dedicated loop time definition to IMU EKF and AHRS EKF  
 
 ## v1.3.2
 
