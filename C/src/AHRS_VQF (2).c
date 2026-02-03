@@ -16,29 +16,11 @@
 #include <math.h>
 #include <string.h>
 
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
-
-#define VQF_PI_F   (3.14159265358979323846f)
 #define VQF_SQRT2  (1.41421356237309504880f)
 #define VQF_EPS    (FLT_EPSILON)
 #define VQF_NAN    (NAN)
 
-#if defined(USE_FAST_MATH)
-#include "basicMath.h"
-static inline float vqf_sin(float x) { return fastSin(x); }
-static inline float vqf_cos(float x) { return fastCos(x); }
-static inline float vqf_sqrt(float x) { return fastSqrt(x); }
-static inline float vqf_inv_sqrt(float x) { return fastInvSqrt(x); }
-#else
-static inline float vqf_sin(float x) { return sinf(x); }
-static inline float vqf_cos(float x) { return cosf(x); }
-static inline float vqf_sqrt(float x) { return sqrtf(x); }
-static inline float vqf_inv_sqrt(float x) { return 1.0f / sqrtf(x); }
-#endif
 
-static inline float vqf_tan(float x) { return tanf(x); }
 static inline float vqf_exp(float x) { return expf(x); }
 static inline float vqf_atan2(float y, float x) { return atan2f(y, x); }
 static inline float vqf_asin(float x) { return asinf(x); }
@@ -74,7 +56,7 @@ static float vqf_norm(const float* vec, size_t n)
     for (size_t i = 0; i < n; i++) {
         s += vec[i] * vec[i];
     }
-    return vqf_sqrt(s);
+    return SQRT(s);
 }
 
 static void vqf_normalize(float* vec, size_t n)
@@ -146,8 +128,8 @@ static void vqf_quat_rotate(const float q[4], const float v[3], float out[3])
 static void vqf_quat_apply_delta(const float q[4], float delta, float out[4])
 {
     // out = [cos(delta/2), 0, 0, sin(delta/2)] ⊗ q
-    const float c = vqf_cos(delta * 0.5f);
-    const float s = vqf_sin(delta * 0.5f);
+    const float c = COS(delta * 0.5f);
+    const float s = SIN(delta * 0.5f);
 
     const float w = c * q[0] - s * q[3];
     const float x = c * q[1] - s * q[2];
@@ -237,9 +219,9 @@ static void vqf_filter_coeffs(float tau, float Ts, double outB[3], double outA[2
 {
     // second order Butterworth filter based on https://stackoverflow.com/a/52764064
     // time constant of damped, non-oscillating part of step response
-    const double fc = (VQF_SQRT2 / (2.0 * VQF_PI_F)) / (double)tau;
+    const double fc = (VQF_SQRT2 / (2.0 * constPI)) / (double)tau;
 
-    const double C = (double)vqf_tan((float)(VQF_PI_F * (float)fc * Ts));
+    const double C = (double)TAN((float)(constPI * (float)fc * Ts));
     const double D = C * C + sqrt(2.0) * C + 1.0;
 
     const double b0 = (C * C) / D;
@@ -749,7 +731,7 @@ void AHRS_VQF_SetBiasEstimate(AHRS_VQF_t* vqf, const float bias[3], float sigma)
     }
 
     if (sigma > 0.0f) {
-        const float P = vqf_square(sigma * (180.0f * 100.0f / VQF_PI_F));
+        const float P = vqf_square(sigma * (180.0f * 100.0f / constPI));
         vqf_mat3_set_scaled_identity(P, vqf->state.biasP);
     }
 }
@@ -774,8 +756,8 @@ void AHRS_VQF_GetRelativeRestDeviations(const AHRS_VQF_t* vqf, float out[2])
         return;
     }
 
-    out[0] = vqf_sqrt(vqf->state.restLastSquaredDeviations[0]) / (vqf->params.restThGyr * (VQF_PI_F / 180.0f));
-    out[1] = vqf_sqrt(vqf->state.restLastSquaredDeviations[1]) / vqf->params.restThAcc;
+    out[0] = SQRT(vqf->state.restLastSquaredDeviations[0]) / (vqf->params.restThGyr * (constPI / 180.0f));
+    out[1] = SQRT(vqf->state.restLastSquaredDeviations[1]) / vqf->params.restThAcc;
 }
 
 float AHRS_VQF_GetMagRefNorm(const AHRS_VQF_t* vqf)
@@ -810,8 +792,8 @@ float AHRS_VQF_GetBiasEstimate(const AHRS_VQF_t* vqf, float bias_out[3])
     const float lambda = vqf_max(sum1, vqf_max(sum2, sum3));
 
     // Convert from internal scaling back to rad/s and clip by biasSigmaInit
-    const float sigma = vqf_sqrt(lambda) * (VQF_PI_F / (180.0f * 100.0f));
-    return vqf_min(sigma, vqf->params.biasSigmaInit * (VQF_PI_F / 180.0f));
+    const float sigma = SQRT(lambda) * (constPI / (180.0f * 100.0f));
+    return vqf_min(sigma, vqf->params.biasSigmaInit * (constPI / 180.0f));
 }
 
 // -----------------------------------------------------------------------------
@@ -844,8 +826,8 @@ void AHRS_VQF_UpdateGyr(AHRS_VQF_t* vqf, const float gyr[3])
             vqf_square(gyr[1] - s->restLastGyrLp[1]) +
             vqf_square(gyr[2] - s->restLastGyrLp[2]);
 
-        const float biasClip = p->biasClip * (VQF_PI_F / 180.0f);
-        if (s->restLastSquaredDeviations[0] >= vqf_square(p->restThGyr * (VQF_PI_F / 180.0f)) ||
+        const float biasClip = p->biasClip * (constPI / 180.0f);
+        if (s->restLastSquaredDeviations[0] >= vqf_square(p->restThGyr * (constPI / 180.0f)) ||
             vqf_fabs(s->restLastGyrLp[0]) > biasClip ||
             vqf_fabs(s->restLastGyrLp[1]) > biasClip ||
             vqf_fabs(s->restLastGyrLp[2]) > biasClip) {
@@ -862,8 +844,8 @@ void AHRS_VQF_UpdateGyr(AHRS_VQF_t* vqf, const float gyr[3])
     const float angle = gyrNorm * c->gyrTs;
 
     if (gyrNorm > VQF_EPS) {
-        const float cA = vqf_cos(angle * 0.5f);
-        const float sA = vqf_sin(angle * 0.5f) / gyrNorm;
+        const float cA = COS(angle * 0.5f);
+        const float sA = SIN(angle * 0.5f) / gyrNorm;
         const float dq[4] = {cA, sA * gyrNoBias[0], sA * gyrNoBias[1], sA * gyrNoBias[2]};
 
         float qNew[4];
@@ -927,7 +909,7 @@ void AHRS_VQF_UpdateAcc(AHRS_VQF_t* vqf, const float acc[3])
 
     // Inclination correction
     float accCorrQuat[4];
-    const float q_w = vqf_sqrt((accEarth[2] + 1.0f) * 0.5f);
+    const float q_w = SQRT((accEarth[2] + 1.0f) * 0.5f);
     if (q_w > 1e-6f) {
         accCorrQuat[0] = q_w;
         accCorrQuat[1] = 0.5f * accEarth[1] / q_w;
@@ -951,7 +933,7 @@ void AHRS_VQF_UpdateAcc(AHRS_VQF_t* vqf, const float acc[3])
 
     // Bias estimation
     if (p->motionBiasEstEnabled || p->restBiasEstEnabled) {
-        const float biasClip = p->biasClip * (VQF_PI_F / 180.0f);
+        const float biasClip = p->biasClip * (constPI / 180.0f);
 
         float accGyrQuat[4];
         float R[9];
@@ -1081,7 +1063,7 @@ void AHRS_VQF_UpdateMag(AHRS_VQF_t* vqf, const float mag[3])
 
         // magnetic disturbance detection
         if (vqf_fabs(s->magNormDip[0] - s->magRefNorm) < p->magNormTh * s->magRefNorm &&
-            vqf_fabs(s->magNormDip[1] - s->magRefDip) < p->magDipTh * (VQF_PI_F / 180.0f)) {
+            vqf_fabs(s->magNormDip[1] - s->magRefDip) < p->magDipTh * (constPI / 180.0f)) {
 
             s->magUndisturbedT += c->magTs;
             if (s->magUndisturbedT >= p->magMinUndisturbedTime) {
@@ -1096,9 +1078,9 @@ void AHRS_VQF_UpdateMag(AHRS_VQF_t* vqf, const float mag[3])
 
         // new magnetic field acceptance
         if (vqf_fabs(s->magNormDip[0] - s->magCandidateNorm) < p->magNormTh * s->magCandidateNorm &&
-            vqf_fabs(s->magNormDip[1] - s->magCandidateDip) < p->magDipTh * (VQF_PI_F / 180.0f)) {
+            vqf_fabs(s->magNormDip[1] - s->magCandidateDip) < p->magDipTh * (constPI / 180.0f)) {
 
-            if (vqf_norm(s->restLastGyrLp, 3) >= p->magNewMinGyr * (VQF_PI_F / 180.0f)) {
+            if (vqf_norm(s->restLastGyrLp, 3) >= p->magNewMinGyr * (constPI / 180.0f)) {
                 s->magCandidateT += c->magTs;
             }
 
@@ -1125,10 +1107,10 @@ void AHRS_VQF_UpdateMag(AHRS_VQF_t* vqf, const float mag[3])
     s->lastMagDisAngle = vqf_atan2(magEarth[0], magEarth[1]) - s->delta;
 
     // make sure the disagreement angle is in the range [-pi, pi]
-    if (s->lastMagDisAngle > VQF_PI_F) {
-        s->lastMagDisAngle -= 2.0f * VQF_PI_F;
-    } else if (s->lastMagDisAngle < -VQF_PI_F) {
-        s->lastMagDisAngle += 2.0f * VQF_PI_F;
+    if (s->lastMagDisAngle > constPI) {
+        s->lastMagDisAngle -= 2.0f * constPI;
+    } else if (s->lastMagDisAngle < -constPI) {
+        s->lastMagDisAngle += 2.0f * constPI;
     }
 
     float k = c->kMag;
@@ -1170,10 +1152,10 @@ void AHRS_VQF_UpdateMag(AHRS_VQF_t* vqf, const float mag[3])
     s->lastMagCorrAngularRate = k * s->lastMagDisAngle / c->magTs;
 
     // make sure delta is in the range [-pi, pi]
-    if (s->delta > VQF_PI_F) {
-        s->delta -= 2.0f * VQF_PI_F;
-    } else if (s->delta < -VQF_PI_F) {
-        s->delta += 2.0f * VQF_PI_F;
+    if (s->delta > constPI) {
+        s->delta -= 2.0f * constPI;
+    } else if (s->delta < -constPI) {
+        s->delta += 2.0f * constPI;
     }
 }
 
