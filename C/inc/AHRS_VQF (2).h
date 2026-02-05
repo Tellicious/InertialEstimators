@@ -3,7 +3,7 @@
  ******************************************************************************
  * \file            AHRS_VQF.h
  * \author          Andrea Vivani
- * \brief           VQF (Versatile Quaternion-based Filter) AHRS implementation
+ * \brief           Implementation of VQF for attitude and heading estimation
  ******************************************************************************
  * \copyright
  *
@@ -31,6 +31,7 @@
  */
 /* END Header */
 
+/* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef __AHRS_VQF_H__
 #define __AHRS_VQF_H__
 
@@ -41,152 +42,108 @@ extern "C" {
 /* Includes ------------------------------------------------------------------*/
 
 #include <stdint.h>
-#include "basicMath.h"
+
+#include "commonTypes.h"
 #include "matrix.h"
 #include "quaternion.h"
 
+/* Configuration -------------------------------------------------------------*/
+
+#if !defined(ADVUTILS_USE_DYNAMIC_ALLOCATION)
+#error ADVUTILS_USE_DYNAMIC_ALLOCATION must be set to use AHRS_VQF (dynamic matrix allocation)
+#endif
+
 /* Typedefs ------------------------------------------------------------------*/
 
-/**
- * \brief VQF tuning parameters (see original VQF defaults).
- *
- * Notes:
- * - Time constants are expressed in seconds.
- * - Thresholds that represent angles or angular rates are expressed in degrees
- *   (as in the reference implementation) unless otherwise stated.
- */
 typedef struct {
-    /* Core filter time constants (seconds) */
-    float tauAcc; /**< Accelerometer correction time constant [s] */
-    float tauMag; /**< Magnetometer correction time constant [s] */
+    /* Core filter time constants [s] */
+    float tauAcc;
+    float tauMag;
 
-    /* Bias estimation / disturbance rejection enable flags */
-    uint8_t motionBiasEstEnabled;    /**< Enable bias estimation during motion */
-    uint8_t restBiasEstEnabled;      /**< Enable bias estimation during rest */
-    uint8_t magDistRejectionEnabled; /**< Enable magnetic disturbance rejection */
+    /* Feature toggles */
+    uint8_t motionBiasEstEnabled;
+    uint8_t restBiasEstEnabled;
+    uint8_t magDistRejectionEnabled;
 
-    /* Gyro bias estimator tuning */
-    float biasSigmaInit;                /**< Initial bias std-dev [deg/s] */
-    float biasForgettingTime;           /**< Bias forgetting time [s] */
-    float biasClip;                     /**< Bias clipping limit [deg/s] */
-    float biasSigmaMotion;              /**< Motion bias std-dev [deg/s] */
-    float biasVerticalForgettingFactor; /**< Vertical forgetting factor [-] */
-    float biasSigmaRest;                /**< Rest bias std-dev [deg/s] */
+    /* Gyro bias estimation tuning */
+    float biasSigmaInit;
+    float biasForgettingTime;
+    float biasClip;
+    float biasSigmaMotion;
+    float biasVerticalForgettingFactor;
+    float biasSigmaRest;
 
     /* Rest detection */
-    float restMinT;       /**< Minimum rest time [s] */
-    float restFilterTau;  /**< Rest detection LP time constant [s] */
-    float restThGyr;      /**< Gyro rest threshold [deg/s] */
-    float restThAcc;      /**< Acc rest threshold [same as accel input] */
+    float restMinT;
+    float restFilterTau;
+    float restThGyr;
+    float restThAcc;
 
     /* Magnetic disturbance rejection */
-    float magCurrentTau;          /**< Magnetic current LP time constant [s] */
-    float magRefTau;              /**< Magnetic reference LP time constant [s] */
-    float magNormTh;              /**< Magnetic norm threshold [-] */
-    float magDipTh;               /**< Magnetic dip threshold [deg] */
-    float magNewTime;             /**< New magnetic field accept time [s] */
-    float magNewFirstTime;        /**< First mag accept time [s] */
-    float magNewMinGyr;           /**< Minimum gyro rate for acceptance [deg/s] */
-    float magMinUndisturbedTime;  /**< Minimum undisturbed time [s] */
-    float magMaxRejectionTime;    /**< Maximum full rejection time [s] */
-    float magRejectionFactor;     /**< Rejection factor [-] */
+    float magCurrentTau;
+    float magRefTau;
+    float magNormTh;
+    float magDipTh;
+    float magNewTime;
+    float magNewFirstTime;
+    float magNewMinGyr;
+    float magMinUndisturbedTime;
+    float magMaxRejectionTime;
+    float magRejectionFactor;
 } AHRS_VQF_Params_t;
-
-/**
- * \brief Internal coefficient cache (derived from parameters and sampling times).
- *
- * The coefficient vectors are stored as small column matrices for consistency with
- * the repository math utilities (matrix_t).
- */
 typedef struct {
-    float gyrTs; /**< Gyroscope sample period [s] */
-    float accTs; /**< Accelerometer sample period [s] */
-    float magTs; /**< Magnetometer sample period [s] */
+    float gyrTs;
+    float accTs;
+    float magTs;
 
-    /* Accelerometer LP coefficients */
-    matrix_t accLpB;        /**< 3x1 */
-    float    accLpBData[3];
-    matrix_t accLpA;        /**< 2x1 */
-    float    accLpAData[2];
+    matrix_t accLpB;
+    matrix_t accLpA;
 
-    float kMag; /**< Magnetometer correction gain */
+    float kMag;
 
-    /* Bias estimator parameters */
     float biasP0;
     float biasV;
     float biasMotionW;
     float biasVerticalW;
     float biasRestW;
 
-    /* Rest detection LP coefficients */
-    matrix_t restGyrLpB;    /**< 3x1 */
-    float    restGyrLpBData[3];
-    matrix_t restGyrLpA;    /**< 2x1 */
-    float    restGyrLpAData[2];
+    matrix_t restGyrLpB;
+    matrix_t restGyrLpA;
+    matrix_t restAccLpB;
+    matrix_t restAccLpA;
 
-    matrix_t restAccLpB;    /**< 3x1 */
-    float    restAccLpBData[3];
-    matrix_t restAccLpA;    /**< 2x1 */
-    float    restAccLpAData[2];
-
-    /* Mag reference / current filter */
-    float kMagRef;
-
-    matrix_t magNormDipLpB; /**< 3x1 */
-    float    magNormDipLpBData[3];
-    matrix_t magNormDipLpA; /**< 2x1 */
-    float    magNormDipLpAData[2];
+    float   kMagRef;
+    matrix_t magNormDipLpB;
+    matrix_t magNormDipLpA;
 } AHRS_VQF_Coeffs_t;
-
-/**
- * \brief VQF runtime state.
- *
- * All internal computations run in ENU. Public APIs accept/return body-NED
- * quantities (axis3f_t) and return body->NED quaternions.
- */
 typedef struct {
-    quaternion_t gyrQuat; /**< 3D orientation from gyroscope integration (body->ENU) */
-    quaternion_t accQuat; /**< Inclination correction quaternion (ENU) */
-    float delta;          /**< Yaw correction angle about ENU +Z (Up) [rad] */
+    quaternion_t gyrQuat;
+    quaternion_t accQuat;
+    float        delta;
 
     uint8_t restDetected;
     uint8_t magDistDetected;
 
     axis3f_t lastAccLp;
+    matrix_t accLpState;
+    float    lastAccCorrAngularRate;
 
-    matrix_t accLpState;        /**< 6x1 (3 signals, 2 states each) */
-    float    accLpStateData[3 * 2];
+    float    kMagInit;
+    float    lastMagDisAngle;
+    float    lastMagCorrAngularRate;
 
-    float lastAccCorrAngularRate;
+    axis3f_t bias;
+    matrix_t biasP;
 
-    float kMagInit;
-    float lastMagDisAngle;
-    float lastMagCorrAngularRate;
+    matrix_t motionBiasEstRLpState;
+    matrix_t motionBiasEstBiasLpState;
 
-    axis3f_t bias; /**< Gyro bias estimate (body-ENU), same unit as gyro input */
-
-    matrix_t biasP;             /**< 3x3 */
-    float    biasPData[9];
-
-    matrix_t motionBiasEstRLpState; /**< 18x1 (9 signals, 2 states each) */
-    float    motionBiasEstRLpStateData[9 * 2];
-
-    matrix_t motionBiasEstBiasLpState; /**< 4x1 (2 signals, 2 states each) */
-    float    motionBiasEstBiasLpStateData[2 * 2];
-
-    matrix_t restLastSquaredDeviations; /**< 2x1 */
-    float    restLastSquaredDeviationsData[2];
-
-    float restT;
+    matrix_t restLastSquaredDeviations;
+    float    restT;
     axis3f_t restLastGyrLp;
-
-    matrix_t restGyrLpState;    /**< 6x1 */
-    float    restGyrLpStateData[3 * 2];
-
+    matrix_t restGyrLpState;
     axis3f_t restLastAccLp;
-
-    matrix_t restAccLpState;    /**< 6x1 */
-    float    restAccLpStateData[3 * 2];
+    matrix_t restAccLpState;
 
     float magRefNorm;
     float magRefDip;
@@ -197,227 +154,174 @@ typedef struct {
     float magCandidateDip;
     float magCandidateT;
 
-    matrix_t magNormDip;        /**< 2x1 */
-    float    magNormDipData[2];
-
-    matrix_t magNormDipLpState; /**< 4x1 */
-    float    magNormDipLpStateData[2 * 2];
+    matrix_t magNormDip;
+    matrix_t magNormDipLpState;
 } AHRS_VQF_State_t;
-
-/**
- * \brief VQF filter instance.
- */
 typedef struct {
-    AHRS_VQF_Params_t params; /**< User parameters */
-    AHRS_VQF_Coeffs_t coeffs; /**< Derived coefficients */
-    AHRS_VQF_State_t  state;  /**< Runtime state */
+    AHRS_VQF_Params_t params;
+    AHRS_VQF_Coeffs_t coeffs;
+    AHRS_VQF_State_t  state;
+
+    /* Scratch matrices (allocated once in init) */
+    matrix_t _R;
+    matrix_t _TMP33a;
+    matrix_t _TMP33b;
+    matrix_t _TMP33c;
+    matrix_t _TMP33d;
+    matrix_t _TMP31a;
+    matrix_t _TMP31b;
+    matrix_t _TMP21a;
+    matrix_t _e;
 } AHRS_VQF_t;
 
 /* Function prototypes -------------------------------------------------------*/
 
 /**
- * \brief Initialize a VQF instance.
+ * \brief           Initialize a VQF instance.
  *
- * \param[in,out] vqf      VQF instance.
- * \param[in]     gyrTs_s  Gyroscope sample period [s].
- * \param[in]     accTs_s  Accelerometer sample period [s]. If <= 0, gyrTs_s is used.
- * \param[in]     magTs_s  Magnetometer sample period [s]. If <= 0, gyrTs_s is used.
+ * \param[in,out]   vqf: pointer to the filter instance.
+ * \param[in]       gyrTs_s: gyroscope sampling time [s].
+ * \param[in]       accTs_s: accelerometer sampling time [s] (if <=0 it defaults to gyrTs_s).
+ * \param[in]       magTs_s: magnetometer sampling time [s] (if <=0 it defaults to gyrTs_s).
  */
 void AHRS_VQF_Init(AHRS_VQF_t* vqf, float gyrTs_s, float accTs_s, float magTs_s);
 
 /**
- * \brief Reset the internal state of the filter (keeps current parameters and sampling times).
+ * \brief           Deinitialize a VQF instance.
  *
- * \param[in,out] vqf VQF instance.
+ * Frees all dynamically allocated matrices belonging to the instance.
+ *
+ * \param[in,out]   vqf: pointer to the filter instance.
+ */
+void AHRS_VQF_Deinit(AHRS_VQF_t* vqf);
+
+/**
+ * \brief           Reset the VQF state (keeps current parameters and coefficients).
+ *
+ * \param[in,out]   vqf: pointer to the filter instance.
  */
 void AHRS_VQF_Reset(AHRS_VQF_t* vqf);
 
 /**
- * \brief Update the filter with a gyroscope sample.
+ * \brief           Update the 3D (gyro-only) part of the filter.
  *
- * The input is assumed to be expressed in the body NED frame (x=N, y=E, z=D).
+ * Input gyroscope vector is expressed in the body-NED frame.
+ * Units: rad/s.
  *
- * \param[in,out] vqf       VQF instance.
- * \param[in]     gyr_rad_s Gyroscope sample [rad/s] (body-NED).
+ * \param[in,out]   vqf: pointer to the filter instance.
+ * \param[in]       gyr_rad_s: gyroscope measurement [rad/s] in body-NED.
  */
 void AHRS_VQF_UpdateGyr(AHRS_VQF_t* vqf, axis3f_t gyr_rad_s);
 
 /**
- * \brief Update the filter with an accelerometer sample.
+ * \brief           Update the 6D (acc) part of the filter.
  *
- * The input is assumed to be expressed in the body NED frame (x=N, y=E, z=D).
- * Only the direction is used for inclination correction; the magnitude is used
- * only for rest detection thresholds.
+ * Input accelerometer vector is expressed in the body-NED frame.
+ * The filter uses only the direction (norm used for thresholds).
  *
- * \param[in,out] vqf VQF instance.
- * \param[in]     acc Accelerometer sample (body-NED).
+ * \param[in,out]   vqf: pointer to the filter instance.
+ * \param[in]       acc: accelerometer measurement in body-NED.
  */
 void AHRS_VQF_UpdateAcc(AHRS_VQF_t* vqf, axis3f_t acc);
 
 /**
- * \brief Update the filter with a magnetometer sample.
+ * \brief           Update the 9D (mag) part of the filter.
  *
- * The input is assumed to be expressed in the body NED frame (x=N, y=E, z=D).
+ * Input magnetometer vector is expressed in the body-NED frame.
  *
- * \param[in,out] vqf VQF instance.
- * \param[in]     mag Magnetometer sample (body-NED).
+ * \param[in,out]   vqf: pointer to the filter instance.
+ * \param[in]       mag: magnetometer measurement in body-NED.
  */
 void AHRS_VQF_UpdateMag(AHRS_VQF_t* vqf, axis3f_t mag);
 
 /**
- * \brief Get the 3D orientation quaternion (gyro integration only).
+ * \brief           Get the 3D gyro-only orientation.
  *
- * \param[in]  vqf   VQF instance.
- * \param[out] q_out Body->NED quaternion (scalar-first).
+ * The returned quaternion represents the rotation from body-NED to NED.
+ *
+ * \param[in]       vqf: pointer to the filter instance.
+ * \param[out]      q_out: output quaternion (scalar-first).
  */
 void AHRS_VQF_GetQuat3D(const AHRS_VQF_t* vqf, quaternion_t* q_out);
 
 /**
- * \brief Get the 6D orientation quaternion (gyro + accelerometer inclination correction).
+ * \brief           Get the 6D (gyro + acc) orientation.
  *
- * \param[in]  vqf   VQF instance.
- * \param[out] q_out Body->NED quaternion (scalar-first).
+ * The returned quaternion represents the rotation from body-NED to NED.
+ *
+ * \param[in]       vqf: pointer to the filter instance.
+ * \param[out]      q_out: output quaternion (scalar-first).
  */
 void AHRS_VQF_GetQuat6D(const AHRS_VQF_t* vqf, quaternion_t* q_out);
 
 /**
- * \brief Get the 9D orientation quaternion (gyro + acc + magnetometer yaw correction).
+ * \brief           Get the 9D (gyro + acc + mag) orientation.
  *
- * \param[in]  vqf   VQF instance.
- * \param[out] q_out Body->NED quaternion (scalar-first).
+ * The returned quaternion represents the rotation from body-NED to NED.
+ *
+ * \param[in]       vqf: pointer to the filter instance.
+ * \param[out]      q_out: output quaternion (scalar-first).
  */
 void AHRS_VQF_GetQuat9D(const AHRS_VQF_t* vqf, quaternion_t* q_out);
 
 /**
- * \brief Get the yaw correction delta in NED convention.
+ * \brief           Get the estimated yaw correction delta.
  *
- * The internal delta is defined about ENU +Z (Up). This function returns the
- * equivalent correction about NED +Z (Down), i.e. the sign is inverted.
+ * Returned in NED convention, i.e. positive rotation about +Down.
  *
- * \param[in] vqf VQF instance.
- * \return Yaw correction [rad] (positive about +Down).
+ * \param[in]       vqf: pointer to the filter instance.
+ *
+ * \return          Yaw correction delta [rad].
  */
 float AHRS_VQF_GetDelta(const AHRS_VQF_t* vqf);
 
 /**
- * \brief Get the estimated gyroscope bias.
+ * \brief           Get current gyro bias estimate.
  *
- * \param[in]  vqf      VQF instance.
- * \param[out] bias_out Bias estimate [rad/s] in body-NED frame.
- * \return Conservative 1-sigma estimate [rad/s].
+ * Bias is expressed in the body-NED frame, same units as gyro input.
+ *
+ * \param[in]       vqf: pointer to the filter instance.
+ * \param[out]      bias_out: if not NULL, receives the bias vector in body-NED.
+ *
+ * \return          A conservative bias sigma estimate [rad/s].
  */
 float AHRS_VQF_GetBiasEstimate(const AHRS_VQF_t* vqf, axis3f_t* bias_out);
 
 /**
- * \brief Return current rest detection status.
+ * \brief           Set the current gyro bias estimate.
  *
- * \param[in] vqf VQF instance.
- * \return 1 if rest is detected, 0 otherwise.
+ * \param[in,out]   vqf: pointer to the filter instance.
+ * \param[in]       bias: bias vector in body-NED [rad/s].
+ * \param[in]       sigma: bias sigma [rad/s]. If <=0, covariance is left unchanged.
+ */
+void AHRS_VQF_SetBiasEstimate(AHRS_VQF_t* vqf, axis3f_t bias, float sigma);
+
+/**
+ * \brief           Return rest detection flag.
+ *
+ * \param[in]       vqf: pointer to the filter instance.
+ *
+ * \return          1 if rest detected, otherwise 0.
  */
 uint8_t AHRS_VQF_GetRestDetected(const AHRS_VQF_t* vqf);
 
 /**
- * \brief Return current magnetic disturbance detection status.
+ * \brief           Return magnetic disturbance detection flag.
  *
- * \param[in] vqf VQF instance.
- * \return 1 if a magnetic disturbance is detected, 0 otherwise.
+ * \param[in]       vqf: pointer to the filter instance.
+ *
+ * \return          1 if magnetic disturbance detected, otherwise 0.
  */
 uint8_t AHRS_VQF_GetMagDistDetected(const AHRS_VQF_t* vqf);
 
 /**
- * \brief Get normalized deviations used by the rest detector.
+ * \brief           Set magnetic reference norm and dip.
  *
- * Output is a 2x1 vector:
- * - out[0] = gyro deviation / restThGyr
- * - out[1] = acc  deviation / restThAcc
- *
- * \param[in]  vqf VQF instance.
- * \param[out] out 2x1 matrix to receive the deviations.
+ * \param[in,out]   vqf: pointer to the filter instance.
+ * \param[in]       norm: reference magnetic norm (same units as magnetometer).
+ * \param[in]       dip_rad: reference dip angle [rad] (positive down).
  */
-void AHRS_VQF_GetRelativeRestDeviations(const AHRS_VQF_t* vqf, matrix_t* out);
-
-/**
- * \brief Get current magnetic field reference norm.
- *
- * \param[in] vqf VQF instance.
- * \return Magnetic field norm reference.
- */
-float AHRS_VQF_GetMagRefNorm(const AHRS_VQF_t* vqf);
-
-/**
- * \brief Get current magnetic field reference dip angle (rad).
- *
- * \param[in] vqf VQF instance.
- * \return Magnetic field dip reference [rad].
- */
-float AHRS_VQF_GetMagRefDip(const AHRS_VQF_t* vqf);
-
-/**
- * \brief Set accelerometer correction time constant.
- *
- * \param[in,out] vqf       VQF instance.
- * \param[in]     tauAcc_s  Time constant [s].
- */
-void AHRS_VQF_SetTauAcc(AHRS_VQF_t* vqf, float tauAcc_s);
-
-/**
- * \brief Set magnetometer correction time constant.
- *
- * \param[in,out] vqf       VQF instance.
- * \param[in]     tauMag_s  Time constant [s].
- */
-void AHRS_VQF_SetTauMag(AHRS_VQF_t* vqf, float tauMag_s);
-
-/**
- * \brief Enable/disable motion bias estimation.
- *
- * \param[in,out] vqf     VQF instance.
- * \param[in]     enabled 0/1.
- */
-void AHRS_VQF_SetMotionBiasEstEnabled(AHRS_VQF_t* vqf, uint8_t enabled);
-
-/**
- * \brief Enable/disable rest bias estimation.
- *
- * \param[in,out] vqf     VQF instance.
- * \param[in]     enabled 0/1.
- */
-void AHRS_VQF_SetRestBiasEstEnabled(AHRS_VQF_t* vqf, uint8_t enabled);
-
-/**
- * \brief Enable/disable magnetic disturbance rejection.
- *
- * \param[in,out] vqf     VQF instance.
- * \param[in]     enabled 0/1.
- */
-void AHRS_VQF_SetMagDistRejectionEnabled(AHRS_VQF_t* vqf, uint8_t enabled);
-
-/**
- * \brief Set rest detection thresholds.
- *
- * \param[in,out] vqf   VQF instance.
- * \param[in]     thGyr Gyro threshold [deg/s].
- * \param[in]     thAcc Acc threshold [same as accel input].
- */
-void AHRS_VQF_SetRestDetectionThresholds(AHRS_VQF_t* vqf, float thGyr, float thAcc);
-
-/**
- * \brief Set the magnetic field reference.
- *
- * \param[in,out] vqf  VQF instance.
- * \param[in]     norm Magnetic field norm.
- * \param[in]     dip  Magnetic field dip [rad].
- */
-void AHRS_VQF_SetMagRef(AHRS_VQF_t* vqf, float norm, float dip);
-
-/**
- * \brief Set the gyroscope bias estimate and covariance.
- *
- * \param[in,out] vqf      VQF instance.
- * \param[in]     bias     Bias estimate [rad/s] in body-NED frame.
- * \param[in]     sigma    1-sigma value [rad/s]. If <= 0, covariance is not changed.
- */
-void AHRS_VQF_SetBiasEstimate(AHRS_VQF_t* vqf, axis3f_t bias, float sigma);
+void AHRS_VQF_SetMagRef(AHRS_VQF_t* vqf, float norm, float dip_rad);
 
 #ifdef __cplusplus
 }
