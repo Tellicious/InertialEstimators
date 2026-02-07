@@ -59,6 +59,16 @@ void IMU_Madgwick_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro) {
     float twoSEq_2 = 2.0f * q.q1;
     float twoSEq_3 = 2.0f * q.q2;
 
+    /* Re-orientate readings */
+    float tmp = accel.x;
+    accel.x = accel.y;
+    accel.y = tmp;
+    accel.z *= -1;
+    tmp = gyro.x;
+    gyro.x = gyro.y;
+    gyro.y = tmp;
+    gyro.z *= -1;
+
     /* Normalize the accelerometer measurement */
     inv_norm = INVSQRT(accel.x * accel.x + accel.y * accel.y + accel.z * accel.z);
     if (isnan(inv_norm) || isinf(inv_norm)) {
@@ -113,6 +123,10 @@ void IMU_Madgwick_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro) {
 
     /* Convert quaterionion to Euler angles */
     quaternionToEuler(&q, angles);
+    /* Switched x and y and changed sign to z to align with current reference system */
+    tmp = angles->x;
+    angles->x = angles->y;
+    angles->y = tmp;
 
     return;
 }

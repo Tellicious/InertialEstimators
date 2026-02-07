@@ -85,6 +85,20 @@ void AHRS_Madgwick_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro, axis3
     float SEq_3SEq_3;
     float SEq_4SEq_4;
 
+    /* Re-orientate readings */
+    float tmp = accel.x;
+    accel.x = accel.y;
+    accel.y = tmp;
+    accel.z *= -1;
+    tmp = mag.x;
+    mag.x = mag.y;
+    mag.y = tmp;
+    mag.z *= -1;
+    tmp = gyro.x;
+    gyro.x = gyro.y;
+    gyro.y = tmp;
+    gyro.z *= -1;
+
     /* normalize the accelerometer measurement */
     inv_norm = INVSQRT(accel.x * accel.x + accel.y * accel.y + accel.z * accel.z);
     if (isnan(inv_norm) || isinf(inv_norm)) {
@@ -201,9 +215,10 @@ void AHRS_Madgwick_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro, axis3
     b_z = h.z;
 
     /* Convert quaterionion to Euler angles */
-    angles->x = atan2f((2.f * (SEq_3SEq_4 + SEq_1SEq_2)), (SEq_1SEq_1 - SEq_2SEq_2 - SEq_3SEq_3 + SEq_4SEq_4));
-    angles->y = asinf((2.f * (SEq_2SEq_4 - SEq_1SEq_3)));
-    angles->z = atan2f((2.f * (SEq_2SEq_3 + SEq_1SEq_4)), (SEq_1SEq_1 + SEq_2SEq_2 - SEq_3SEq_3 - SEq_4SEq_4));
+    /* Switched x and y and changed sign to z to align with current reference system */
+    angles->y = atan2f((2.f * (SEq_3SEq_4 + SEq_1SEq_2)), (SEq_1SEq_1 - SEq_2SEq_2 - SEq_3SEq_3 + SEq_4SEq_4));
+    angles->x = -asinf((2.f * (SEq_2SEq_4 - SEq_1SEq_3)));
+    angles->z = -atan2f((2.f * (SEq_2SEq_3 + SEq_1SEq_4)), (SEq_1SEq_1 + SEq_2SEq_2 - SEq_3SEq_3 - SEq_4SEq_4));
 
     return;
 }
