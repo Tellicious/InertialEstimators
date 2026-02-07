@@ -17,7 +17,7 @@
  * furnished to do so, subject to the following conditions:
  *
  * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
+ * all copies or substantial portions of the Software
  *
  * THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -25,7 +25,7 @@
  * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
- * IN THE SOFTWARE.
+ * IN THE SOFTWARE
  *
  ******************************************************************************
  */
@@ -56,132 +56,123 @@ extern "C" {
 /* Function prototypes -------------------------------------------------------*/
 
 /**
- * \brief           Initialize a VQF instance.
+ * \brief           Initialize a VQF instance
  *
- * \param[in]       gyrTs_s: gyroscope sampling time [s].
- * \param[in]       accTs_s: accelerometer sampling time [s] (if <=0 it defaults to gyrTs_s).
- * \param[in]       magTs_s: magnetometer sampling time [s] (if <=0 it defaults to gyrTs_s).
+ * \param[in]       gyrTs_s: gyroscope sampling time [s]
+ * \param[in]       accTs_s: accelerometer sampling time [s] (if <=0 it defaults to gyrTs_s)
+ * \param[in]       magTs_s: magnetometer sampling time [s] (if <=0 it defaults to gyrTs_s)
  */
 void AHRS_VQF_Init(float gyrTs_s, float accTs_s, float magTs_s);
 
 /**
- * \brief           Deinitialize a VQF instance.
+ * \brief           Deinitialize a VQF instance
  *
- * Frees all dynamically allocated matrices belonging to the instance.
+ * Frees all dynamically allocated matrices belonging to the instance
  */
 void AHRS_VQF_Deinit();
 
 /**
- * \brief           Reset the VQF state (keeps current parameters and coefficients).
+ * \brief           Reset the VQF state (keeps current parameters and coefficients)
  */
 void AHRS_VQF_Reset();
 
 /**
- * \brief           Update the 3D (gyro-only) part of the filter.
+ * \brief           Update the 3D (gyro-only) part of the filter
  *
- * Input gyroscope vector is expressed in the body-NED frame.
- * Units: rad/s.
+ * Input gyroscope vector is expressed in the body-NED frame
+ * Units: rad/s
  *
- * \param[in]       gyr_rad_s: gyroscope measurement [rad/s] in body-NED.
+ * \param[in]       gyro: gyroscope measurement [rad/s] in body-NED
  */
-void AHRS_VQF_UpdateGyro(axis3f_t gyr_rad_s);
+void AHRS_VQF_updateGyro(axis3f_t gyro);
 
 /**
- * \brief           Update the 6D (acc) part of the filter.
+ * \brief           Update the 6D (acc) part of the filter
  *
- * Input accelerometer vector is expressed in the body-NED frame.
- * The filter uses only the direction (norm used for thresholds).
+ * Input accelerometer vector is expressed in the body-NED frame
+ * The filter uses only the direction (norm used for thresholds)
  *
- * \param[in]       acc: accelerometer measurement in body-NED.
+ * \param[in]       acc: accelerometer measurement in body-NED
  */
-void AHRS_VQF_UpdateAcc(axis3f_t acc);
+void AHRS_VQF_updateAcc(axis3f_t acc);
 
 /**
- * \brief           Update the 9D (mag) part of the filter.
+ * \brief           Update the 9D (mag) part of the filter
  *
- * Input magnetometer vector is expressed in the body-NED frame.
+ * Input magnetometer vector is expressed in the body-NED frame
  *
- * \param[in]       mag: magnetometer measurement in body-NED.
+ * \param[in]       mag: magnetometer measurement in body-NED
  */
-void AHRS_VQF_UpdateMag(axis3f_t mag);
+void AHRS_VQF_updateMag(axis3f_t mag);
 
 /**
- * \brief           Get the 3D gyro-only orientation.
+ * \brief           Get the 6D (gyro + acc) orientation
  *
- * The returned quaternion represents the rotation from body-NED to NED.
+ * The returned quaternion represents the rotation from body-NED to NED
  *
- * \param[out]      q_out: output quaternion (scalar-first).
+ * \param[out]      angles: output Euler angles
  */
-void AHRS_VQF_GetQuat3D(quaternion_t* q_out);
+void AHRS_VQF_Get6D(axis3f_t* angles);
 
 /**
- * \brief           Get the 6D (gyro + acc) orientation.
+ * \brief           Get the 9D (gyro + acc + mag) orientation
  *
- * The returned quaternion represents the rotation from body-NED to NED.
+ * The returned quaternion represents the rotation from body-NED to NED
  *
- * \param[out]      q_out: output quaternion (scalar-first).
+ * \param[out]      angles: output Euler angles
  */
-void AHRS_VQF_GetQuat6D(quaternion_t* q_out);
+void AHRS_VQF_Get9D(axis3f_t* angles);
 
 /**
- * \brief           Get the 9D (gyro + acc + mag) orientation.
+ * \brief           Get the estimated yaw correction delta
  *
- * The returned quaternion represents the rotation from body-NED to NED.
- *
- * \param[out]      q_out: output quaternion (scalar-first).
- */
-void AHRS_VQF_GetQuat9D(quaternion_t* q_out);
-
-/**
- * \brief           Get the estimated yaw correction delta.
- *
- * Returned in NED convention, i.e. positive rotation about +Down.
+ * Returned in NED convention, i.e. positive rotation about +Down
  *
  *
- * \return          Yaw correction delta [rad].
+ * \return          Yaw correction delta [rad]
  */
 float AHRS_VQF_GetDelta();
 
 /**
- * \brief           Get current gyro bias estimate.
+ * \brief           Get current gyro bias estimate
  *
- * Bias is expressed in the body-NED frame, same units as gyro input.
+ * Bias is expressed in the body-NED frame, same units as gyro input
  *
- * \param[out]      bias_out: if not NULL, receives the bias vector in body-NED.
+ * \param[out]      bias_out: if not NULL, receives the bias vector in body-NED
  *
- * \return          A conservative bias sigma estimate [rad/s].
+ * \return          A conservative bias sigma estimate [rad/s]
  */
 float AHRS_VQF_GetBiasEstimate(axis3f_t* bias_out);
 
 /**
- * \brief           Set the current gyro bias estimate.
+ * \brief           Set the current gyro bias estimate
  *
- * \param[in]       bias: bias vector in body-NED [rad/s].
- * \param[in]       sigma: bias sigma [rad/s]. If <=0, covariance is left unchanged.
+ * \param[in]       bias: bias vector in body-NED [rad/s]
+ * \param[in]       sigma: bias sigma [rad/s]. If <=0, covariance is left unchanged
  */
 void AHRS_VQF_SetBiasEstimate(axis3f_t bias, float sigma);
 
 /**
- * \brief           Return rest detection flag.
+ * \brief           Return rest detection flag
  *
  *
- * \return          1 if rest detected, otherwise 0.
+ * \return          1 if rest detected, otherwise 0
  */
 uint8_t AHRS_VQF_GetRestDetected();
 
 /**
- * \brief           Return magnetic disturbance detection flag.
+ * \brief           Return magnetic disturbance detection flag
  *
  *
- * \return          1 if magnetic disturbance detected, otherwise 0.
+ * \return          1 if magnetic disturbance detected, otherwise 0
  */
 uint8_t AHRS_VQF_GetMagDistDetected();
 
 /**
- * \brief           Set magnetic reference norm and dip.
+ * \brief           Set magnetic reference norm and dip
  *
- * \param[in]       norm: reference magnetic norm (same units as magnetometer).
- * \param[in]       dip_rad: reference dip angle [rad] (positive down).
+ * \param[in]       norm: reference magnetic norm (same units as magnetometer)
+ * \param[in]       dip_rad: reference dip angle [rad] (positive down)
  */
 void AHRS_VQF_SetMagRef(float norm, float dip_rad);
 

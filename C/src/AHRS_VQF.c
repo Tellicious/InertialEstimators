@@ -348,16 +348,6 @@ static void vqf_applyDelta(quaternion_t* q, float delta_rad) {
     *q = tmp;
 }
 
-static void vqf_getQuat3D_enu(quaternion_t* q_out) { *q_out = state.gyrQuat; }
-
-static void vqf_getQuat6D_enu(quaternion_t* q_out) { quaternionMult((quaternion_t*)&state.accQuat, (quaternion_t*)&state.gyrQuat, q_out); }
-
-static void vqf_getQuat9D_enu(quaternion_t* q_out) {
-    vqf_getQuat6D_enu(q_out);
-    vqf_applyDelta(q_out, state.delta);
-    quaternionNorm(q_out);
-}
-
 static void vqf_quatEnuToNed(const quaternion_t* q_enu, quaternion_t* q_ned) {
     /* qP is 180° rotation about axis (1,1,0)/sqrt(2). Its own inverse. */
     const float inv_sqrt2 = INVSQRT(2.0f);
@@ -595,10 +585,10 @@ void AHRS_VQF_Reset() {
 
 /*------------------------------------Update functions--------------------------------------------*/
 
-void AHRS_VQF_UpdateGyro(axis3f_t gyr_rad_s) {
+void AHRS_VQF_updateGyro(axis3f_t gyro) {
 
     /* Convert from body-NED to internal body-ENU */
-    const axis3f_t gyr = vqf_bodyNedToEnu(gyr_rad_s);
+    const axis3f_t gyr = vqf_bodyNedToEnu(gyro);
 
     /* Rest detection based on gyro */
     if (params.restBiasEstEnabled || params.magDistRejectionEnabled) {
@@ -642,7 +632,7 @@ void AHRS_VQF_UpdateGyro(axis3f_t gyr_rad_s) {
     }
 }
 
-void AHRS_VQF_UpdateAcc(axis3f_t acc) {
+void AHRS_VQF_updateAcc(axis3f_t acc) {
 
     /* Convert from body-NED to internal body-ENU */
     const axis3f_t accBody = vqf_bodyNedToEnu(acc);
@@ -711,7 +701,7 @@ void AHRS_VQF_UpdateAcc(axis3f_t acc) {
         const float biasClipRad = params.biasClip * (constPI / 180.0f);
 
         quaternion_t accGyrQuat;
-        vqf_getQuat6D_enu(&accGyrQuat);
+        quaternionMult((quaternion_t*)&state.accQuat, (quaternion_t*)&state.gyrQuat, &accGyrQuat);
 
         /* Build rotation matrix R(accGyrQuat) in internal ENU */
         const float q0 = accGyrQuat.q0;
@@ -810,7 +800,7 @@ void AHRS_VQF_UpdateAcc(axis3f_t acc) {
     }
 }
 
-void AHRS_VQF_UpdateMag(axis3f_t mag) {
+void AHRS_VQF_updateMag(axis3f_t mag) {
 
     /* Convert from body-NED to internal body-ENU */
     const axis3f_t magBody = vqf_bodyNedToEnu(mag);
@@ -820,7 +810,7 @@ void AHRS_VQF_UpdateMag(axis3f_t mag) {
     }
 
     quaternion_t accGyrQuat;
-    vqf_getQuat6D_enu(&accGyrQuat);
+    quaternionMult((quaternion_t*)&state.accQuat, (quaternion_t*)&state.gyrQuat, &accGyrQuat);
 
     axis3f_t magEarth = vqf_quatRotateForward(&accGyrQuat, magBody);
 
@@ -913,31 +903,26 @@ void AHRS_VQF_UpdateMag(axis3f_t mag) {
 
 /*----------------------------Get values from state vector----------------------------------*/
 
-void AHRS_VQF_GetQuat3D(quaternion_t* q_out) {
-    if (!q_out) {
+void AHRS_VQF_Get6D(axis3f_t* angles) {
+    if (!angles) {
         return;
     }
-    quaternion_t q_enu;
-    vqf_getQuat3D_enu(&q_enu);
-    vqf_quatEnuToNed(&q_enu, q_out);
+    quaternion_t q_enu, q_ned;
+    quaternionMult((quaternion_t*)&state.accQuat, (quaternion_t*)&state.gyrQuat, &q_enu);
+    vqf_quatEnuToNed(&q_enu, &q_ned);
+    quaternionToEuler(&q_ned, angles);
 }
 
-void AHRS_VQF_GetQuat6D(quaternion_t* q_out) {
-    if (!q_out) {
+void AHRS_VQF_Get9D(axis3f_t* angles) {
+    if (!angles) {
         return;
     }
-    quaternion_t q_enu;
-    vqf_getQuat6D_enu(&q_enu);
-    vqf_quatEnuToNed(&q_enu, q_out);
-}
-
-void AHRS_VQF_GetQuat9D(quaternion_t* q_out) {
-    if (!q_out) {
-        return;
-    }
-    quaternion_t q_enu;
-    vqf_getQuat9D_enu(&q_enu);
-    vqf_quatEnuToNed(&q_enu, q_out);
+    quaternion_t q_enu, q_ned;
+    quaternionMult((quaternion_t*)&state.accQuat, (quaternion_t*)&state.gyrQuat, &q_enu);
+    vqf_applyDelta(&q_enu, state.delta);
+    quaternionNorm(&q_enu);
+    vqf_quatEnuToNed(&q_enu, &q_ned);
+    quaternionToEuler(&q_ned, angles);
 }
 
 float AHRS_VQF_GetDelta() {
