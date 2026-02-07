@@ -44,6 +44,7 @@ extern "C" {
 #include <stdint.h>
 
 #include "commonTypes.h"
+#include "main.h"
 #include "matrix.h"
 #include "quaternion.h"
 
@@ -53,16 +54,22 @@ extern "C" {
 #error ADVUTILS_USE_DYNAMIC_ALLOCATION must be set to use AHRS_VQF (dynamic matrix allocation)
 #endif
 
+/* Loop time, in s */
+#ifndef configAHRS_VQF_LOOP_TIME_S
+#error configAHRS_VQF_LOOP_TIME_S must be defined
+#endif
+
+/* Magnetometer correction loop time, in s */
+#ifndef configAHRS_VQF_MAG_LOOP_TIME_S
+#error configAHRS_VQF_MAG_LOOP_TIME_S must be defined
+#endif
+
 /* Function prototypes -------------------------------------------------------*/
 
 /**
  * \brief           Initialize a VQF instance
- *
- * \param[in]       gyrTs_s: gyroscope sampling time [s]
- * \param[in]       accTs_s: accelerometer sampling time [s] (if <=0 it defaults to gyrTs_s)
- * \param[in]       magTs_s: magnetometer sampling time [s] (if <=0 it defaults to gyrTs_s)
  */
-void AHRS_VQF_Init(float gyrTs_s, float accTs_s, float magTs_s);
+void AHRS_VQF_Init();
 
 /**
  * \brief           Deinitialize a VQF instance
