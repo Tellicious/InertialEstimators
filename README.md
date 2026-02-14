@@ -9,6 +9,7 @@
 - ***AHRS_Madgwick:*** quaternion-based filter based on Sebastian Madgwick work
 - ***AHRS_PX4_SO3:*** quaternion-based complementary filter based on Robert Mahony work
 - ***AHRS_PX4_EKF:*** EKF based on PX4 code
+- ***AHRS_VQF:*** IMU and AHRS based on VQF filter by D. Laidig and T. Seel
 
 ### IMU
 #### Attitude-only estimation based on accelerometer and gyroscope 
