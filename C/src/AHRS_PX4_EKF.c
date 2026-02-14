@@ -397,7 +397,7 @@ void AHRS_PX4_EKF_calculateAngles(axis3f_t* angles) {
     float inv_norm =
         INVSQRT(ELEM(AHRS_EKF_u, 6, 0) * ELEM(AHRS_EKF_u, 6, 0) + ELEM(AHRS_EKF_u, 7, 0) * ELEM(AHRS_EKF_u, 7, 0)
                 + ELEM(AHRS_EKF_u, 8, 0) * ELEM(AHRS_EKF_u, 8, 0));
-    if (isnan(inv_norm) || iSIN(inv_norm)) {
+    if (isnan(inv_norm) || isinf(inv_norm)) {
         inv_norm = 1.f / constG;
     }
     float ax = ELEM(AHRS_EKF_u, 6, 0) * inv_norm;
@@ -408,7 +408,7 @@ void AHRS_PX4_EKF_calculateAngles(axis3f_t* angles) {
     inv_norm =
         INVSQRT(ELEM(AHRS_EKF_u, 9, 0) * ELEM(AHRS_EKF_u, 9, 0) + ELEM(AHRS_EKF_u, 10, 0) * ELEM(AHRS_EKF_u, 10, 0)
                 + ELEM(AHRS_EKF_u, 11, 0) * ELEM(AHRS_EKF_u, 11, 0));
-    if (isnan(inv_norm) || iSIN(inv_norm)) {
+    if (isnan(inv_norm) || isinf(inv_norm)) {
         inv_norm = 1.f;
     }
     float mx = ELEM(AHRS_EKF_u, 9, 0) * inv_norm;
@@ -417,7 +417,7 @@ void AHRS_PX4_EKF_calculateAngles(axis3f_t* angles) {
 
     /* Compute Euler angles */
     angles->x = atan2f(-ay, -az);
-    angles->y = aSIN(ax);
+    angles->y = asinf(ax);
     float sPhi = SIN(angles->x);
     float cPhi = COS(angles->x);
     float sTheta = ax;
