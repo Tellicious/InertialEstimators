@@ -225,12 +225,19 @@ void altitudeKF_updateVelD(altitudeState_t* altState, axis3f_t velocities, axis3
 #endif
 
 /**
+ * \brief           Altitude Kalman filter set ground values
+ *
+ * \param[in]       pressGround: ground pressure in Pa
+ * \param[in]       tempGround: ground temperature in K
+ */
+void altitudeKF_setGround(float pressGround, float tempGround);
+
+/**
  * \brief           Altitude Kalman filter reset
  *
  * \param[out]      altState: altitude state object
- * \param[in]       pressGround: ground pressure in Pa
  */
-void altitudeKF_reset(altitudeState_t* altState, float pressGround);
+void altitudeKF_reset(altitudeState_t* altState);
 
 #ifdef __cplusplus
 }

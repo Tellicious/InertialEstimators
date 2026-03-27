@@ -447,12 +447,22 @@ void altitudeKF_updateVelD(altitudeState_t* altState, axis3f_t velocities, axis3
 }
 #endif
 
-void altitudeKF_reset(altitudeState_t* altState, float pressGround) {
+void altitudeKF_setGround(float pressGround, float tempGround) {
 #ifdef configALTITUDE_KF_USE_APPROX_ALTITUDE
     _alt0 = altitudeCalculation(pressGround);
 #else
     _inv_pressZeroLevel = 1.f / pressGround;
+    _alt_k1 = tempGround / configALTITUDE_KF_CONST_TEMP_RATE;
+    _alt_kpow = (configALTITUDE_KF_CONST_R * configALTITUDE_KF_CONST_TEMP_RATE) / (configALTITUDE_KF_CONST_M * constG);
 #endif /* configALTITUDE_KF_USE_APPROX_ALTITUDE */
+
+/* Initialize barometer derivative filter */
+#ifdef configALTITUDE_KF_DETECT_GROUND_EFFECT
+    IIRFilterDerivativeReset(&baro_diff);
+#endif
+}
+
+void altitudeKF_reset(altitudeState_t* altState) {
 
     /* Initialize state */
     altState->RoC = 0;
@@ -471,5 +481,10 @@ void altitudeKF_reset(altitudeState_t* altState, float pressGround) {
     /* Initialize LIDAR derivative filter */
 #if (configUSE_ALT_TOF != configTOF_DISABLE)
     IIRFilterDerivativeReset(&LIDAR_diff);
+#endif
+
+/* Initialize barometer derivative filter */
+#ifdef configALTITUDE_KF_DETECT_GROUND_EFFECT
+    IIRFilterDerivativeReset(&baro_diff);
 #endif
 }
