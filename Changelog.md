@@ -1,12 +1,23 @@
 # Changelog
 
-## v1.4.0
+## v2.0.0
+
+**Breaking changes:**
+- Changed `altitudeKF` API with new methods for barometer and accelerometer correction
+- Changed `altitudeKF` API reset method
+
+**New features:**
+ - Added `AHRS_VQF` with an implementation of VQF IMU/AHRS filters
+ - Added `altitudeKF_setGround` method to `altitudeKF` to set ground values
 
 **Improvements:**
 - Removed accelerometer offset correction from attitude estimators as it must be performed before passing the data
 - Removed ToF data validity checks from `altitudeKF` as they must be performed before passing the data
 - Removed ToF attitude correction from `altitudeKF` as it must be performed before passing the data
-- Added velocity X and Y dedicated loop time definition to IMU EKF and AHRS EKF  
+- Moved derivative filters initialization within update functions in `altitudeKF` to account for dedicated update times
+- Added velocity X and Y dedicated loop time definition to IMU EKF and AHRS EKF
+- Changed naming of update timing constants in `AHRS_EKF`
+- Added AHRS_EKF velocity measurement noise configuration functions in `AHRS_EKF`
 
 ## v1.3.2
 
