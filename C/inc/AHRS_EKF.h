@@ -78,8 +78,8 @@ Northern Emisphere positive (pointing down), Southern Emisphere negative (pointi
 #endif
 
 /* Magnetometer correction loop time, in s */
-#ifndef configAHRS_EKF_MAG_LOOP_TIME_S
-#error configAHRS_EKF_MAG_LOOP_TIME_S must be defined
+#ifndef configAHRS_EKF_MAG_UPDATE_TIME_S
+#error configAHRS_EKF_MAG_UPDATE_TIME_S must be defined
 #endif
 
 /* Vel X, Y correction loop time, in s */

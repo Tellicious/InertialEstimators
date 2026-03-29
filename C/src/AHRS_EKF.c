@@ -41,7 +41,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 static matrix_t
-    AHRS_EKF_u;         //(Roll=Phi, Pitch=Theta, Yaw=Psi, Xd, Yd, Zd, c_damp, b_az, incl, bconstGx, bconstGy, bconstGz) angles in rad, angular velocities in rad/s, velocities in m/s, c_damp in N*s/m
+    AHRS_EKF_u; //(Roll=Phi, Pitch=Theta, Yaw=Psi, Xd, Yd, Zd, c_damp, b_az, incl, bconstGx, bconstGy, bconstGz) angles in rad, angular velocities in rad/s, velocities in m/s, c_damp in N*s/m
 static matrix_t _A;     //state matrix
 static matrix_t _B;     //input matrix
 static matrix_t _C_acc; //acceleration output matrix
@@ -96,9 +96,9 @@ void AHRS_EKF_init(axis3f_t* angles, axis3f_t* velocities) {
     ELEM(_W, 9, 9) = configAHRS_EKF_B_G_NOISE * configAHRS_EKF_LOOP_TIME_S;
     ELEM(_R_acc, 0, 0) = configAHRS_EKF_AXY_NOISE / configAHRS_EKF_LOOP_TIME_S;
     ELEM(_R_acc, 1, 1) = configAHRS_EKF_AXY_NOISE / configAHRS_EKF_LOOP_TIME_S;
-    ELEM(_R_mag, 0, 0) = configAHRS_EKF_M_NOISE / configAHRS_EKF_MAG_LOOP_TIME_S;
-    ELEM(_R_mag, 1, 1) = configAHRS_EKF_M_NOISE / configAHRS_EKF_MAG_LOOP_TIME_S;
-    ELEM(_R_mag, 2, 2) = configAHRS_EKF_M_NOISE / configAHRS_EKF_MAG_LOOP_TIME_S;
+    ELEM(_R_mag, 0, 0) = configAHRS_EKF_M_NOISE / configAHRS_EKF_MAG_UPDATE_TIME_S;
+    ELEM(_R_mag, 1, 1) = configAHRS_EKF_M_NOISE / configAHRS_EKF_MAG_UPDATE_TIME_S;
+    ELEM(_R_mag, 2, 2) = configAHRS_EKF_M_NOISE / configAHRS_EKF_MAG_UPDATE_TIME_S;
 
     _r_vxy = configAHRS_EKF_VXY_NOISE;
     _r_vz = configAHRS_EKF_VZ_NOISE;
@@ -210,8 +210,10 @@ void AHRS_EKF_prediction(float az, axis3f_t gyro) {
     ELEM(AHRS_EKF_u, 0, 0) += configAHRS_EKF_LOOP_TIME_S * (pr + tmp1 * tTheta);
     ELEM(AHRS_EKF_u, 1, 0) += configAHRS_EKF_LOOP_TIME_S * tmp2;
     ELEM(AHRS_EKF_u, 2, 0) += configAHRS_EKF_LOOP_TIME_S * tmp1 * inv_cTheta;
-    float delta_u3 = configAHRS_EKF_LOOP_TIME_S * (ELEM(AHRS_EKF_u, 4, 0) * rr - ELEM(AHRS_EKF_u, 5, 0) * qr - ELEM(AHRS_EKF_u, 6, 0) * ELEM(AHRS_EKF_u, 3, 0) - constG * sTheta);
-    float delta_u4 = configAHRS_EKF_LOOP_TIME_S * (ELEM(AHRS_EKF_u, 5, 0) * pr - ELEM(AHRS_EKF_u, 3, 0) * rr - ELEM(AHRS_EKF_u, 6, 0) * ELEM(AHRS_EKF_u, 4, 0) + constG * sPhi * cTheta);
+    float delta_u3 = configAHRS_EKF_LOOP_TIME_S
+                     * (ELEM(AHRS_EKF_u, 4, 0) * rr - ELEM(AHRS_EKF_u, 5, 0) * qr - ELEM(AHRS_EKF_u, 6, 0) * ELEM(AHRS_EKF_u, 3, 0) - constG * sTheta);
+    float delta_u4 = configAHRS_EKF_LOOP_TIME_S
+                     * (ELEM(AHRS_EKF_u, 5, 0) * pr - ELEM(AHRS_EKF_u, 3, 0) * rr - ELEM(AHRS_EKF_u, 6, 0) * ELEM(AHRS_EKF_u, 4, 0) + constG * sPhi * cTheta);
     ELEM(AHRS_EKF_u, 3, 0) += delta_u3;
     ELEM(AHRS_EKF_u, 4, 0) += delta_u4;
     ELEM(AHRS_EKF_u, 5, 0) += configAHRS_EKF_LOOP_TIME_S * (az + (constG - ELEM(AHRS_EKF_u, 7, 0)) * cPhi * cTheta);
@@ -699,7 +701,7 @@ void AHRS_EKF_setAccelNoise(float axy) {
 
 //-----------------------------------Output mag noises---------------------------------------//
 void AHRS_EKF_setMagNoise(float m) {
-    float inv_loop_time_mag_s = 1.0f / configAHRS_EKF_MAG_LOOP_TIME_S;
+    float inv_loop_time_mag_s = 1.0f / configAHRS_EKF_MAG_UPDATE_TIME_S;
     matrixSet(&_R_mag, 0, 0, m * inv_loop_time_mag_s);
     matrixSet(&_R_mag, 1, 1, m * inv_loop_time_mag_s);
     matrixSet(&_R_mag, 2, 2, m * inv_loop_time_mag_s);
