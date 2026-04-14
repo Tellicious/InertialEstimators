@@ -70,7 +70,7 @@ extern "C" {
 /* Universal gas constant, in J/mol/K */
 #define configALTITUDE_KF_CONST_R         8.314f
 
-/* Loop time, in s */
+/* Loop time for prediction and accelerometer correction, in s */
 #ifndef configALTITUDE_KF_LOOP_TIME_S
 #error configALTITUDE_KF_LOOP_TIME_S must be defined
 #endif
@@ -110,10 +110,6 @@ extern "C" {
 #define configALTITUDE_KF_GND_EFF_INCR 3
 #endif
 
-/* LIDAR sample time, in s */
-#ifndef configALTITUDE_KF_LIDAR_UPDATE_TIME_S
-#define configALTITUDE_KF_LIDAR_UPDATE_TIME_S 0.025f
-
 /* Maximum RoC to use LIDAR for correction, in m/s */
 #ifndef configALTITUDE_KF_MAX_LIDAR_ROC
 #define configALTITUDE_KF_MAX_LIDAR_ROC 1.f
@@ -122,7 +118,6 @@ extern "C" {
 /* LIDAR derivative filter constant */
 #ifndef configALTITUDE_KF_LIDAR_DIFF_ND
 #define configALTITUDE_KF_LIDAR_DIFF_ND 15.f
-#endif
 #endif
 
 /* Accelerometer high-pass filter frequency, in Hz*/
@@ -202,6 +197,25 @@ void altitudeKF_prediction(altitudeState_t* altState);
  */
 void altitudeKF_updateBaroAccel(altitudeState_t* altState, float press, axis3f_t accel, float b_az, axis3f_t angles);
 
+/**
+ * \brief           Altitude Kalman filter update with barometer and accelerometer measurements
+ *
+ * \param[out]      altState: altitude state object
+ * \param[in]       accel: accelerometer measurements vector, in m/s^2
+ * \param[in]       b_az: bias of accelerometer measurement along local z axis (if known)
+ * \param[in]       angles: current attitude in Euler angles
+ */
+void altitudeKF_updateAccel(altitudeState_t* altState, axis3f_t accel, float b_az, axis3f_t angles);
+
+/**
+ * \brief           Altitude Kalman filter update with barometer measurements
+ *
+ * \param[out]      altState: altitude state object
+ * \param[in]       press: measured pressure, in hPa
+ * \param[in]       dt_s: update loop time, in s
+ */
+void altitudeKF_updateBaro(altitudeState_t* altState, float press, float dt_s);
+
 #if (configUSE_ALT_TOF != configTOF_DISABLE)
 /**
  * \brief           Altitude Kalman filter update with LIDAR / ToF sensor measurements
@@ -209,8 +223,9 @@ void altitudeKF_updateBaroAccel(altitudeState_t* altState, float press, axis3f_t
  * \param[out]      altState: altitude state object
  * \param[in]       ToFAlt: LIDAR / ToF measured altitude in m
  * \param[in]       angles: current attitude in Euler angles
+ * \param[in]       dt_s: update loop time, in s
  */
-void altitudeKF_updateLIDAR(altitudeState_t* altState, float ToFAlt, axis3f_t angles);
+void altitudeKF_updateLIDAR(altitudeState_t* altState, float ToFAlt, axis3f_t angles, float dt_s);
 #endif
 
 #ifdef configALTITUDE_KF_USE_VELD_CORRECTION
@@ -220,8 +235,9 @@ void altitudeKF_updateLIDAR(altitudeState_t* altState, float ToFAlt, axis3f_t an
  * \param[out]      altState: altitude state object
  * \param[in]       velocities: velocities vector along local axes
  * \param[in]       angles: current attitude in Euler angles
+ * \param[in]       dt_s: update loop time, in s
  */
-void altitudeKF_updateVelD(altitudeState_t* altState, axis3f_t velocities, axis3f_t angles);
+void altitudeKF_updateVelD(altitudeState_t* altState, axis3f_t velocities, axis3f_t angles, float dt_s);
 #endif
 
 /**
