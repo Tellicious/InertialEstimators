@@ -227,7 +227,7 @@ void IMU_EKF_setVelZNoise(float vz);
  * 
  * \param[in]       vD: noise of D-axis velocity measurement
  */
-void IMU_EKF_setVelDNoise(float vD);
+void IMU_EKF_setVelDNoise(float vD); 
 
 /**
  * \brief           Retrieve a specific value from the state

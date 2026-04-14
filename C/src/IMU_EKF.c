@@ -461,7 +461,7 @@ void IMU_EKF_setVelZNoise(float vz) {
     return;
 }
 
-/*------------------------Output velocity noises along d global-----------------------------*/
+/*------------------------Output velocity noises along D global-----------------------------*/
 void IMU_EKF_setVelDNoise(float vD) {
     _r_vd = vD;
 
