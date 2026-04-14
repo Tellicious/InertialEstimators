@@ -271,6 +271,34 @@ void AHRS_EKF_setAccelNoise(float axy);
 void AHRS_EKF_setMagNoise(float m);
 
 /**
+ * \brief           Set EKF measurement noises of velocity along local x and y axis
+ * 
+ * \param[in]       vxy: noise of x-y-axes velocity measurement
+ */
+void AHRS_EKF_setVelXYNoise(float vxy);
+
+/**
+ * \brief           Set EKF measurement noises of velocity along local z axis
+ * 
+ * \param[in]       vz: noise of z-axis velocity measurement
+ */
+void AHRS_EKF_setVelZNoise(float vz);
+
+/**
+ * \brief           Set EKF measurement noises of velocity along global N and E axis
+ * 
+ * \param[in]       vNE: noise of N-E-axes velocity measurement
+ */
+void AHRS_EKF_setVelNENoise(float vNE);
+
+/**
+ * \brief           Set EKF measurement noises of velocity along global D axis
+ * 
+ * \param[in]       vD: noise of D-axis velocity measurement
+ */
+void AHRS_EKF_setVelDNoise(float vD); 
+
+/**
  * \brief           Retrieve a specific value from the state
  *
  * \param[in]       idx: index of required element (Roll=Phi, Pitch=Theta, Yaw=Psi, Xd, Yd, Zd, c_damp, b_az, incl, b_gx, b_gy, b_gz)
