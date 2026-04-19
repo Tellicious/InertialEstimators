@@ -272,16 +272,6 @@ void altitudeKF_init(altitudeState_t* altState, float pressGround, float tempGro
     IIRFilterInitHP(&HPFilt_accD, configALTITUDE_KF_ACCEL_HP_FREQ, configALTITUDE_KF_LOOP_TIME_S * 1e3f);
 #endif
 
-    /* Initialize derivative calculation for vertical speed estimation */
-#if (configUSE_ALT_TOF != configTOF_DISABLE)
-    IIRFilterDerivativeInit(&LIDAR_diff, configALTITUDE_KF_LIDAR_DIFF_ND, configALTITUDE_KF_LIDAR_UPDATE_TIME_S * 1e3f);
-#endif
-
-    /* Initialize derivative calculation for barometer vertical speed estimation */
-#ifdef configALTITUDE_KF_DETECT_GROUND_EFFECT
-    IIRFilterDerivativeInit(&baro_diff, configALTITUDE_KF_BARO_DIFF_ND, configALTITUDE_KF_LOOP_TIME_S * 1e3f);
-#endif
-
     /* Calculate Kalman filter gain */
     matrix_t A, B, C, /* Q, */ Qe, R, P, tmp1, tmp2, tmp3, tmp4;
 
@@ -367,7 +357,8 @@ void altitudeKF_init(altitudeState_t* altState, float pressGround, float tempGro
 
 void altitudeKF_prediction(altitudeState_t* altState) {
     /* Predict state */
-    altState->alt += configALTITUDE_KF_LOOP_TIME_S * altState->RoC + 0.5 * configALTITUDE_KF_LOOP_TIME_S * configALTITUDE_KF_LOOP_TIME_S * (altState->vAcc - altState->b_vAcc);
+    altState->alt += configALTITUDE_KF_LOOP_TIME_S * altState->RoC
+                     + 0.5 * configALTITUDE_KF_LOOP_TIME_S * configALTITUDE_KF_LOOP_TIME_S * (altState->vAcc - altState->b_vAcc);
 
     altState->RoC += configALTITUDE_KF_LOOP_TIME_S * (altState->vAcc - altState->b_vAcc);
 
@@ -452,6 +443,12 @@ void altitudeKF_updateBaro(altitudeState_t* altState, float press, float dt_s) {
     float delta_baroAltitude = (baroAlt - altState->_altPred);
 
 #ifdef configALTITUDE_KF_DETECT_GROUND_EFFECT
+    static uint8_t isDerivativeInitialized = 0;
+    if (!isDerivativeInitialized) {
+        /* Initialize derivative calculation for barometer vertical speed estimation */
+        IIRFilterDerivativeInit(&baro_diff, configALTITUDE_KF_BARO_DIFF_ND, dt_s * 1e3f);
+        isDerivativeInitialized = 1;
+    }
     static uint8_t groundEffectCounter = 0;
     float abs_baroRoC = fabsf(IIRFilterDerivativeProcess(&baro_diff, baroAlt));
 
@@ -481,6 +478,13 @@ void altitudeKF_updateBaro(altitudeState_t* altState, float press, float dt_s) {
 
 #if (configUSE_ALT_TOF != configTOF_DISABLE)
 void altitudeKF_updateLIDAR(altitudeState_t* altState, float ToFAlt, axis3f_t angles, float dt_s) {
+    static uint8_t isDerivativeInitialized = 0;
+    if (!isDerivativeInitialized) {
+        /* Initialize derivative calculation for vertical speed estimation */
+        IIRFilterDerivativeInit(&LIDAR_diff, configALTITUDE_KF_LIDAR_DIFF_ND, dt_s * 1e3f);
+        isDerivativeInitialized = 1;
+    }
+
     /* Differentiate LIDAR reading to obtain vertical speed */
     IIRFilterDerivativeProcess(&LIDAR_diff, ToFAlt);
 
