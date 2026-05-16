@@ -190,17 +190,6 @@ void altitudeKF_prediction(altitudeState_t* altState);
  * \brief           Altitude Kalman filter update with barometer and accelerometer measurements
  *
  * \param[out]      altState: altitude state object
- * \param[in]       press: measured pressure, in hPa
- * \param[in]       accel: accelerometer measurements vector, in m/s^2
- * \param[in]       b_az: bias of accelerometer measurement along local z axis (if known)
- * \param[in]       angles: current attitude in Euler angles
- */
-void altitudeKF_updateBaroAccel(altitudeState_t* altState, float press, axis3f_t accel, float b_az, axis3f_t angles);
-
-/**
- * \brief           Altitude Kalman filter update with barometer and accelerometer measurements
- *
- * \param[out]      altState: altitude state object
  * \param[in]       accel: accelerometer measurements vector, in m/s^2
  * \param[in]       b_az: bias of accelerometer measurement along local z axis (if known)
  * \param[in]       angles: current attitude in Euler angles

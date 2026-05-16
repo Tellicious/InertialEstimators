@@ -370,48 +370,6 @@ void altitudeKF_prediction(altitudeState_t* altState) {
     return;
 }
 
-void altitudeKF_updateBaroAccel(altitudeState_t* altState, float press, axis3f_t accel, float b_az, axis3f_t angles) {
-
-    /* Calculate baro altitude and downwards acceleration */
-    float baroAlt = altitudeCalculation(press);
-    float accelDown = altitudeKFAccelDownCalc(accel, b_az, angles);
-
-    /* Calculate delta measures */
-    float delta_baroAltitude = baroAlt - altState->_altPred;
-    float delta_accelDown = accelDown + altState->_vAccPred;
-
-#ifdef configALTITUDE_KF_DETECT_GROUND_EFFECT
-    static uint8_t groundEffectCounter = 0;
-    float abs_baroRoC = fabsf(IIRFilterDerivativeProcess(&baro_diff, baroAlt));
-
-    /* Detect ground effect based on baro RoC */
-    if (abs_baroRoC > configALTITUDE_KF_MAX_BARO_ROC && (groundEffectCounter < configALTITUDE_KF_GND_EFF_COUNT_MAX)) {
-        groundEffectCounter += configALTITUDE_KF_GND_EFF_INCR;
-        if (groundEffectCounter > configALTITUDE_KF_GND_EFF_COUNT_MAX) {
-            groundEffectCounter = configALTITUDE_KF_GND_EFF_COUNT_MAX;
-        }
-    } else if ((abs_baroRoC < configALTITUDE_KF_THRESHOLD_BARO_ROC) && (groundEffectCounter > 0)) {
-        groundEffectCounter--;
-    }
-
-    /* Apply progressive barometer correction reduction */
-    delta_baroAltitude *= (1.0f - (float)groundEffectCounter / configALTITUDE_KF_GND_EFF_COUNT_MAX);
-#endif /* configALTITUDE_KF_DETECT_GROUND_EFFECT */
-
-    /* Correct with accelerometer only if measured value is within allowed range */
-    if (fabsf(accelDown) > configALTITUDE_KF_MAX_ACCEL_DOWN) {
-        delta_accelDown = 0;
-    }
-
-    /* Apply correction */
-    altState->alt += matrixGet(&K, 0, 0) * delta_baroAltitude - matrixGet(&K, 0, 1) * delta_accelDown;
-    altState->RoC += matrixGet(&K, 1, 0) * delta_baroAltitude - matrixGet(&K, 1, 1) * delta_accelDown;
-    altState->vAcc += matrixGet(&K, 2, 0) * delta_baroAltitude - matrixGet(&K, 2, 1) * delta_accelDown;
-    altState->b_vAcc += matrixGet(&K, 3, 0) * delta_baroAltitude - matrixGet(&K, 3, 1) * delta_accelDown;
-
-    return;
-}
-
 void altitudeKF_updateAccel(altitudeState_t* altState, axis3f_t accel, float b_az, axis3f_t angles) {
 
     /* Calculate downwards acceleration */
