@@ -82,11 +82,6 @@ Northern Emisphere positive (pointing down), Southern Emisphere negative (pointi
 #error configAHRS_EKF_MAG_UPDATE_TIME_S must be defined
 #endif
 
-/* Vel X, Y correction loop time, in s */
-#ifndef configAHRS_EKF_VXY_UPDATE_TIME_S
-#error configAHRS_EKF_VXY_UPDATE_TIME_S must be defined
-#endif
-
 /* AHRS EKF noises */
 /* Gyro x,y noise */
 #ifndef configAHRS_EKF_GXY_NOISE
