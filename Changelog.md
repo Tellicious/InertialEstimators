@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.1.0
+
+**Improvements:**
+- Changed mathematical constants used to align with `v1.25.0` of `ADV-Utils`
+
 ## v2.0.0
 
 **Breaking changes:**

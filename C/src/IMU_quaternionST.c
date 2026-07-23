@@ -42,7 +42,11 @@
 void IMU_quaternionST_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro, IMU_KP_val_t kpVal) {
     const float halfT = 0.5f * configIMU_QUATERNIONST_LOOP_TIME_S;
     const float kInt = configIMU_QUATERNIONST_KI * configIMU_QUATERNIONST_LOOP_TIME_S;
-    static quaternion_t q = {1, 0, 0, 0};
+    static quaternion_t q;
+    q.q0 = 1;
+    q.q1 = 0;
+    q.q2 = 0;
+    q.q3 = 0;
     static float exInt = 0, eyInt = 0, ezInt = 0;
     float ahrs_kp;
     float axf, ayf, azf, gxf, gyf, gzf;

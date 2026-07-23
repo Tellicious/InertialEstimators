@@ -41,7 +41,11 @@
 /* Functions -----------------------------------------------------------------*/
 
 void IMU_Madgwick_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro) {
-    static quaternion_t q = {1, 0, 0, 0};
+    static quaternion_t q;
+    q.q0 = 1;
+    q.q1 = 0;
+    q.q2 = 0;
+    q.q3 = 0;
 
     float inv_norm; //vector norm
     float SEqDot_omega_1, SEqDot_omega_2, SEqDot_omega_3,

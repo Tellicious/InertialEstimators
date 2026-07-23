@@ -39,7 +39,12 @@
 
 /* Functions -----------------------------------------------------------------*/
 void AHRS_Madgwick_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro, axis3f_t mag) { // local system variables
-    static quaternion_t q = {1, 0, 0, 0};
+    static quaternion_t q;
+    q.q0 = 1;
+    q.q1 = 0;
+    q.q2 = 0;
+    q.q3 = 0;
+    
     /* Initial magnetic field estimated direction */
     static float b_x = 1;
     static float b_z = 0;

@@ -176,9 +176,9 @@ static inline float vqf_square(float x) { return x * x; }
 
 static inline float vqf_wrapPi(float angle) {
     if (angle > constPI) {
-        angle -= 2.0f * constPI;
+        angle -= constTWOPI;
     } else if (angle < -constPI) {
-        angle += 2.0f * constPI;
+        angle += constTWOPI;
     }
     return angle;
 }
@@ -232,18 +232,17 @@ static void vqf_filterCoeffs(float tau, float Ts, matrix_t* outB_3x1, matrix_t* 
     }
 
     /* 2nd order Butterworth LPF based on https://stackoverflow.com/a/52764064 */
-    const float sqrt2 = SQRT(2.0f);
-    const float fc = (sqrt2 / (2.0f * constPI)) / tau;
+    const float fc = (constSQRT2 / (constTWOPI)) / tau;
     const float C = TAN(constPI * fc * Ts);
-    const float D = C * C + sqrt2 * C + 1.0f;
+    const float D = C * C + constSQRT2 * C + 1.0f;
 
     const float b0 = (C * C) / D;
     outB_3x1->data[0] = b0;
     outB_3x1->data[1] = 2.0f * b0;
     outB_3x1->data[2] = b0;
 
-    outA_2x1->data[0] = 2.0f * (C * C - 1.0f) / D;      /* a1 (a0 = 1) */
-    outA_2x1->data[1] = (1.0f - sqrt2 * C + C * C) / D; /* a2 */
+    outA_2x1->data[0] = 2.0f * (C * C - 1.0f) / D;           /* a1 (a0 = 1) */
+    outA_2x1->data[1] = (1.0f - constSQRT2 * C + C * C) / D; /* a2 */
 }
 
 static void vqf_filterInitialState(float x0, const matrix_t* b_3x1, const matrix_t* a_2x1, float* out2) {
@@ -344,11 +343,10 @@ static void vqf_applyDelta(quaternion_t* q, float delta_rad) {
 
 static void vqf_quatEnuToNed(const quaternion_t* q_enu, quaternion_t* q_ned) {
     /* qP is 180° rotation about axis (1,1,0)/sqrt(2). Its own inverse. */
-    const float inv_sqrt2 = INVSQRT(2.0f);
     quaternion_t qP;
     qP.q0 = 0.0f;
-    qP.q1 = inv_sqrt2;
-    qP.q2 = inv_sqrt2;
+    qP.q1 = constSQRT1_2;
+    qP.q2 = constSQRT1_2;
     qP.q3 = 0.0f;
 
     quaternion_t tmp;
@@ -592,8 +590,8 @@ void AHRS_VQF_updateGyro(axis3f_t gyro) {
 
         const float biasClipRad = params.biasClip * (constPI / 180.0f);
         const float thGyrRad = params.restThGyr * (constPI / 180.0f);
-        if (state.restLastSquaredDeviations.data[0] >= thGyrRad * thGyrRad || fabsf(state.restLastGyrLp.x) > biasClipRad
-            || fabsf(state.restLastGyrLp.y) > biasClipRad || fabsf(state.restLastGyrLp.z) > biasClipRad) {
+        if (state.restLastSquaredDeviations.data[0] >= thGyrRad * thGyrRad || fabsf(state.restLastGyrLp.x) > biasClipRad || fabsf(state.restLastGyrLp.y) > biasClipRad
+            || fabsf(state.restLastGyrLp.z) > biasClipRad) {
             state.restT = 0.0f;
             state.restDetected = 0u;
         }
@@ -809,16 +807,14 @@ void AHRS_VQF_updateMag(axis3f_t mag) {
         state.magNormDip.data[1] = -asinf(CONSTRAIN(magEarth.z / fmaxf(norm, VQF_EPS), -1.0f, 1.0f));
 
         if (params.magCurrentTau > 0.0f) {
-            vqf_filterVec(&state.magNormDip, params.magCurrentTau, configAHRS_VQF_MAG_UPDATE_TIME_S, &coeffs.magNormDipLpB, &coeffs.magNormDipLpA,
-                          &state.magNormDipLpState, &state.magNormDip);
+            vqf_filterVec(&state.magNormDip, params.magCurrentTau, configAHRS_VQF_MAG_UPDATE_TIME_S, &coeffs.magNormDipLpB, &coeffs.magNormDipLpA, &state.magNormDipLpState, &state.magNormDip);
         }
 
         /* Disturbance detection */
         const float refNorm = state.magRefNorm;
         const float refDip = state.magRefDip;
 
-        if (refNorm > 0.0f && fabsf(state.magNormDip.data[0] - refNorm) < params.magNormTh * refNorm
-            && fabsf(state.magNormDip.data[1] - refDip) < params.magDipTh * (constPI / 180.0f)) {
+        if (refNorm > 0.0f && fabsf(state.magNormDip.data[0] - refNorm) < params.magNormTh * refNorm && fabsf(state.magNormDip.data[1] - refDip) < params.magDipTh * (constPI / 180.0f)) {
             state.magUndisturbedT += configAHRS_VQF_MAG_UPDATE_TIME_S;
             if (state.magUndisturbedT >= params.magMinUndisturbedTime) {
                 state.magDistDetected = 0u;
@@ -840,8 +836,7 @@ void AHRS_VQF_updateMag(axis3f_t mag) {
             state.magCandidateNorm += coeffs.kMagRef * (state.magNormDip.data[0] - state.magCandidateNorm);
             state.magCandidateDip += coeffs.kMagRef * (state.magNormDip.data[1] - state.magCandidateDip);
 
-            if (state.magDistDetected
-                && (state.magCandidateT >= params.magNewTime || (state.magRefNorm == 0.0f && state.magCandidateT >= params.magNewFirstTime))) {
+            if (state.magDistDetected && (state.magCandidateT >= params.magNewTime || (state.magRefNorm == 0.0f && state.magCandidateT >= params.magNewFirstTime))) {
                 state.magRefNorm = state.magCandidateNorm;
                 state.magRefDip = state.magCandidateDip;
                 state.magDistDetected = 0u;
