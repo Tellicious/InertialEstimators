@@ -65,6 +65,16 @@ extern "C" {
 #define configIMU_EKF_C_DAMP0 0.07413f
 #endif
 
+/* Lower bound of the damping coefficient estimate, in N*s/m */
+#ifndef configIMU_EKF_C_DAMP_MIN
+#define configIMU_EKF_C_DAMP_MIN (0.1f * configIMU_EKF_C_DAMP0)
+#endif
+
+/* Upper bound of the damping coefficient estimate, in N*s/m */
+#ifndef configIMU_EKF_C_DAMP_MAX
+#define configIMU_EKF_C_DAMP_MAX (20.f * configIMU_EKF_C_DAMP0)
+#endif
+
 /* Loop time, in s */
 #ifndef configIMU_EKF_LOOP_TIME_S
 #error configIMU_EKF_LOOP_TIME_S must be defined
@@ -91,14 +101,14 @@ extern "C" {
 #define configIMU_EKF_AZ_NOISE 1e-1f
 #endif
 
-/* Damping coefficient noise */
-#ifndef configIMU_EKF_C_DAMP_NOISE
-#define configIMU_EKF_C_DAMP_NOISE 5e-4f
-#endif
-
 /* Bias acc z noise */
 #ifndef configIMU_EKF_B_AZ_NOISE
-#define configIMU_EKF_B_AZ_NOISE 1e-2f
+#define configIMU_EKF_B_AZ_NOISE 1e-4f
+#endif
+
+/* Damping coefficient noise */
+#ifndef configIMU_EKF_C_DAMP_NOISE
+#define configIMU_EKF_C_DAMP_NOISE 1e-6f
 #endif
 
 /* Velocity x,y local noise */
@@ -115,6 +125,44 @@ extern "C" {
 #ifndef configIMU_EKF_VD_NOISE
 #define configIMU_EKF_VD_NOISE 1e-1f
 #endif
+
+/* Initial state uncertainties (1-sigma), used to seed the covariance matrix on init and reset.
+   These must reflect how wrong the initial state can actually be: seeding the covariance too small
+   makes the filter overconfident and, since the attitude enters the model through sin() terms, it can
+   settle on the inverted solution instead of the correct one. */
+
+/* Initial standard deviation of the roll and pitch estimates, in rad */
+#ifndef configIMU_EKF_P0_ANGLES_STD
+#define configIMU_EKF_P0_ANGLES_STD 0.3f
+#endif
+
+/* Initial standard deviation of the x,y local velocity estimates, in m/s */
+#ifndef configIMU_EKF_P0_VXY_STD
+#define configIMU_EKF_P0_VXY_STD 5.f
+#endif
+
+/* Initial standard deviation of the z local velocity estimate, in m/s */
+#ifndef configIMU_EKF_P0_VZ_STD
+#define configIMU_EKF_P0_VZ_STD 1.f
+#endif
+
+/* Initial standard deviation of the damping coefficient estimate, in N*s/m */
+#ifndef configIMU_EKF_P0_C_DAMP_STD
+#define configIMU_EKF_P0_C_DAMP_STD (0.5f * configIMU_EKF_C_DAMP0)
+#endif
+
+/* Initial standard deviation of the z-axis acceleration bias estimate, in m/s^2 */
+#ifndef configIMU_EKF_P0_B_AZ_STD
+#define configIMU_EKF_P0_B_AZ_STD 0.5f
+#endif
+
+/* Lower bound on the magnitude of cos(pitch), used to keep 1 / cos(pitch) finite near +-90 degrees */
+#ifndef configIMU_EKF_C_THETA_MIN
+#define configIMU_EKF_C_THETA_MIN 1e-3f
+#endif
+
+/* Number of elements of the EKF state vector */
+#define IMU_EKF_STATE_SIZE 7
 
 /* Function prototypes -------------------------------------------------------*/
 
@@ -135,14 +183,13 @@ void IMU_EKF_init(axis3f_t* angles, axis3f_t* velocities);
 void IMU_EKF_prediction(float az, axis3f_t gyro);
 
 /**
- * \brief           Update EKF with accelerometer and gyro readings
+ * \brief           Update EKF with accelerometer readings
  *
  * \param[out]      angles: Euler angles vector
  * \param[out]      velocities: translational velocities along local axes
  * \param[in]       accel: accelerometer measurements vector, in m/s^2
- * \param[in]       gyro: gyroscope measurements vector, in rad/s
  */
-void IMU_EKF_updateAccelGyro(axis3f_t* angles, axis3f_t* velocities, axis3f_t accel, axis3f_t gyro);
+void IMU_EKF_updateAccel(axis3f_t* angles, axis3f_t* velocities, axis3f_t accel);
 
 /**
  * \brief           Update EKF with velocity readings along local x and y axis
@@ -222,7 +269,7 @@ void IMU_EKF_setVelZNoise(float vz);
  * 
  * \param[in]       vD: noise of D-axis velocity measurement
  */
-void IMU_EKF_setVelDNoise(float vD); 
+void IMU_EKF_setVelDNoise(float vD);
 
 /**
  * \brief           Retrieve a specific value from the state

@@ -54,66 +54,97 @@ static matrix_t _K;        //gain matrix
 static float _r_vxy, _r_vz, _r_vd; //velocities noise covariances
 static matrix_t TMP1, TMP2, TMP3, TMP4, TMP5;
 
+/* Private functions ---------------------------------------------------------*/
+
+/**
+ * \brief           Seed the covariance matrix with the initial state uncertainties
+ */
+static void IMU_EKF_seedCovariance(void) {
+    matrixZeros(&_P);
+    ELEM(_P, 0, 0) = configIMU_EKF_P0_ANGLES_STD * configIMU_EKF_P0_ANGLES_STD;
+    ELEM(_P, 1, 1) = configIMU_EKF_P0_ANGLES_STD * configIMU_EKF_P0_ANGLES_STD;
+    ELEM(_P, 2, 2) = configIMU_EKF_P0_VXY_STD * configIMU_EKF_P0_VXY_STD;
+    ELEM(_P, 3, 3) = configIMU_EKF_P0_VXY_STD * configIMU_EKF_P0_VXY_STD;
+    ELEM(_P, 4, 4) = configIMU_EKF_P0_VZ_STD * configIMU_EKF_P0_VZ_STD;
+    ELEM(_P, 5, 5) = configIMU_EKF_P0_C_DAMP_STD * configIMU_EKF_P0_C_DAMP_STD;
+    ELEM(_P, 6, 6) = configIMU_EKF_P0_B_AZ_STD * configIMU_EKF_P0_B_AZ_STD;
+
+    return;
+}
+
 /* Functions -----------------------------------------------------------------*/
 
 void IMU_EKF_init(axis3f_t* angles, axis3f_t* velocities) {
 
-    /* Initialize matrices */
-    matrixInit(&IMU_EKF_u, 7, 1);
-    matrixInit(&_A, 7, 7);
-    matrixInit(&_B, 7, 6);
-    matrixInit(&_C, 2, 7);
-    matrixInit(&_P, 7, 7);
+    /* Initialize matrices (6-state: phi, theta, vx, vy, vz, c_damp; b_az removed) */
+    matrixInit(&IMU_EKF_u, IMU_EKF_STATE_SIZE, 1);
+    matrixInit(&_A, IMU_EKF_STATE_SIZE, IMU_EKF_STATE_SIZE);
+    matrixInit(&_B, IMU_EKF_STATE_SIZE, 6);
+    matrixInit(&_C, 2, IMU_EKF_STATE_SIZE);
+    matrixInit(&_P, IMU_EKF_STATE_SIZE, IMU_EKF_STATE_SIZE);
     matrixInit(&_W, 6, 6);
     matrixInit(&_R, 2, 2);
     matrixInit(&_M, 2, 2);
-    matrixInit(&_K, 7, 2);
-    matrixInit(&TMP1, 7, 2);
+    matrixInit(&_K, IMU_EKF_STATE_SIZE, 2);
+    matrixInit(&TMP1, IMU_EKF_STATE_SIZE, 2);
     matrixInit(&TMP2, 2, 2);
-    matrixInit(&TMP3, 7, 1);
-    matrixInit(&TMP4, 7, 7);
-    matrixInit(&TMP5, 7, 7);
+    matrixInit(&TMP3, IMU_EKF_STATE_SIZE, 1);
+    matrixInit(&TMP4, IMU_EKF_STATE_SIZE, IMU_EKF_STATE_SIZE);
+    matrixInit(&TMP5, IMU_EKF_STATE_SIZE, IMU_EKF_STATE_SIZE);
 
+    /* Initial state */
     ELEM(IMU_EKF_u, 0, 0) = configIMU_EKF_PHI0;
     ELEM(IMU_EKF_u, 1, 0) = configIMU_EKF_THETA0;
     ELEM(IMU_EKF_u, 5, 0) = configIMU_EKF_C_DAMP0;
+
+    /* Process-noise covariance _W (dt-scaled): gx, gy, gz, az, c_damp */
     ELEM(_W, 0, 0) = configIMU_EKF_GXY_NOISE * configIMU_EKF_LOOP_TIME_S;
     ELEM(_W, 1, 1) = configIMU_EKF_GXY_NOISE * configIMU_EKF_LOOP_TIME_S;
     ELEM(_W, 2, 2) = configIMU_EKF_GZ_NOISE * configIMU_EKF_LOOP_TIME_S;
     ELEM(_W, 3, 3) = configIMU_EKF_AZ_NOISE * configIMU_EKF_LOOP_TIME_S;
     ELEM(_W, 4, 4) = configIMU_EKF_C_DAMP_NOISE * configIMU_EKF_LOOP_TIME_S;
     ELEM(_W, 5, 5) = configIMU_EKF_B_AZ_NOISE * configIMU_EKF_LOOP_TIME_S;
+
+    /* Measurement-noise covariances */
     ELEM(_R, 0, 0) = configIMU_EKF_AXY_NOISE / configIMU_EKF_LOOP_TIME_S;
     ELEM(_R, 1, 1) = configIMU_EKF_AXY_NOISE / configIMU_EKF_LOOP_TIME_S;
     _r_vxy = configIMU_EKF_VXY_NOISE;
     _r_vz = configIMU_EKF_VZ_NOISE;
     _r_vd = configIMU_EKF_VD_NOISE;
 
-    /* Set angles */
+    /* Seed covariance matrix */
+    IMU_EKF_seedCovariance();
+
+    /* Output initial angles/velocities */
     angles->x = ELEM(IMU_EKF_u, 0, 0); //u(0,0) is roll according to IMU ref. frame
     angles->y = ELEM(IMU_EKF_u, 1, 0); //u(1,0) is pitch according to IMU ref. frame
-
-    /* Set velocities */
-    velocities->x = ELEM(IMU_EKF_u, 2, 0); //u(2,0) is speed along local x axis according to IMU ref. frame
-    velocities->y = ELEM(IMU_EKF_u, 3, 0); //u(3,0) is speed along local y axis according to IMU ref. frame
-    velocities->z = ELEM(IMU_EKF_u, 4, 0); //u(4,0) is speed along local z axis according to IMU ref. frame
+    velocities->x = ELEM(IMU_EKF_u, 2, 0);
+    velocities->y = ELEM(IMU_EKF_u, 3, 0);
+    velocities->z = ELEM(IMU_EKF_u, 4, 0);
 
     return;
 }
 
 /*------------------------------------Prediction--------------------------------------------*/
 void IMU_EKF_prediction(float az, axis3f_t gyro) {
-    float delta_u2, delta_u3;
+    float delta_u2, delta_u3, delta_u4;
 
     /* Trig functions */
     float sPhi = SIN(ELEM(IMU_EKF_u, 0, 0));
     float cPhi = COS(ELEM(IMU_EKF_u, 0, 0));
     float sTheta = SIN(ELEM(IMU_EKF_u, 1, 0));
     float cTheta = COS(ELEM(IMU_EKF_u, 1, 0));
+    /* Keep cos(pitch) away from zero so that 1 / cos(pitch) stays finite at +-90 degrees of pitch */
+    if ((cTheta < configIMU_EKF_C_THETA_MIN) && (cTheta > -configIMU_EKF_C_THETA_MIN)) {
+        cTheta = (cTheta < 0.0f) ? -configIMU_EKF_C_THETA_MIN : configIMU_EKF_C_THETA_MIN;
+    }
     float inv_cTheta = 1.0f / cTheta;
     float tTheta = sTheta * inv_cTheta;
     float tmp1 = sPhi * gyro.y + cPhi * gyro.z;
     float tmp2 = cPhi * gyro.y - sPhi * gyro.z;
+
+    /* Clamp c_damp to avoid instability */
+    ELEM(IMU_EKF_u, 5, 0) = CONSTRAIN(ELEM(IMU_EKF_u, 5, 0), configIMU_EKF_C_DAMP_MIN, configIMU_EKF_C_DAMP_MAX);
 
     /* A matrix */
     //_A.zeros(); //zeros or not?
@@ -134,6 +165,8 @@ void IMU_EKF_prediction(float az, axis3f_t gyro) {
     ELEM(_A, 3, 5) = -configIMU_EKF_LOOP_TIME_S * ELEM(IMU_EKF_u, 3, 0);
     ELEM(_A, 4, 0) = -configIMU_EKF_LOOP_TIME_S * constG * cTheta * sPhi;
     ELEM(_A, 4, 1) = -configIMU_EKF_LOOP_TIME_S * constG * cPhi * sTheta;
+    ELEM(_A, 4, 2) = configIMU_EKF_LOOP_TIME_S * gyro.y;
+    ELEM(_A, 4, 3) = -configIMU_EKF_LOOP_TIME_S * gyro.x;
     ELEM(_A, 4, 4) = 1.0f;
     ELEM(_A, 4, 6) = -configIMU_EKF_LOOP_TIME_S;
     ELEM(_A, 5, 5) = 1.0f;
@@ -150,6 +183,8 @@ void IMU_EKF_prediction(float az, axis3f_t gyro) {
     ELEM(_B, 2, 2) = ELEM(IMU_EKF_u, 3, 0);
     ELEM(_B, 3, 0) = ELEM(IMU_EKF_u, 4, 0);
     ELEM(_B, 3, 2) = -ELEM(IMU_EKF_u, 2, 0);
+    ELEM(_B, 4, 0) = -ELEM(IMU_EKF_u, 3, 0);
+    ELEM(_B, 4, 1) = ELEM(IMU_EKF_u, 2, 0);
     ELEM(_B, 4, 3) = 1.0f;
     ELEM(_B, 5, 4) = 1.0f;
     ELEM(_B, 6, 5) = 1.0f;
@@ -169,34 +204,31 @@ void IMU_EKF_prediction(float az, axis3f_t gyro) {
     ELEM(IMU_EKF_u, 1, 0) += configIMU_EKF_LOOP_TIME_S * tmp2;
     delta_u2 = configIMU_EKF_LOOP_TIME_S * (ELEM(IMU_EKF_u, 3, 0) * gyro.z - ELEM(IMU_EKF_u, 4, 0) * gyro.y - ELEM(IMU_EKF_u, 5, 0) * ELEM(IMU_EKF_u, 2, 0) - constG * sTheta);
     delta_u3 = configIMU_EKF_LOOP_TIME_S * (ELEM(IMU_EKF_u, 4, 0) * gyro.x - ELEM(IMU_EKF_u, 2, 0) * gyro.z - ELEM(IMU_EKF_u, 5, 0) * ELEM(IMU_EKF_u, 3, 0) + constG * sPhi * cTheta);
+    delta_u4 = configIMU_EKF_LOOP_TIME_S * (az - ELEM(IMU_EKF_u, 6, 0) + constG * cPhi * cTheta + gyro.y * ELEM(IMU_EKF_u, 2, 0) - gyro.x * ELEM(IMU_EKF_u, 3, 0));
     ELEM(IMU_EKF_u, 2, 0) += delta_u2;
     ELEM(IMU_EKF_u, 3, 0) += delta_u3;
-    ELEM(IMU_EKF_u, 4, 0) += configIMU_EKF_LOOP_TIME_S * (az - ELEM(IMU_EKF_u, 6, 0) + constG * cPhi * cTheta);
+    ELEM(IMU_EKF_u, 4, 0) += delta_u4;
     // ELEM(IMU_EKF_u, 5,0) += 0;
     // ELEM(IMU_EKF_u, 6,0) += 0;
 
     return;
 }
 
-/*-----------------------------Update with accel & gyro------------------------------------*/
-void IMU_EKF_updateAccelGyro(axis3f_t* angles, axis3f_t* velocities, axis3f_t accel, axis3f_t gyro) {
+/*---------------------------------Update with accel---------------------------------------*/
+void IMU_EKF_updateAccel(axis3f_t* angles, axis3f_t* velocities, axis3f_t accel) {
     matrix_t deltaM;
     matrixInit(&deltaM, 2, 1);
 
     /* C matrix */
     //_C.zeros(); //zeros or not?
     ELEM(_C, 0, 2) = -ELEM(IMU_EKF_u, 5, 0);
-    ELEM(_C, 0, 3) = gyro.z;
-    ELEM(_C, 0, 4) = -gyro.y;
     ELEM(_C, 0, 5) = -ELEM(IMU_EKF_u, 2, 0);
-    ELEM(_C, 1, 2) = -gyro.z;
     ELEM(_C, 1, 3) = -ELEM(IMU_EKF_u, 5, 0);
-    ELEM(_C, 1, 4) = gyro.x;
     ELEM(_C, 1, 5) = -ELEM(IMU_EKF_u, 3, 0);
 
     /* Delta measures */
-    ELEM(deltaM, 0, 0) = accel.x + ELEM(IMU_EKF_u, 4, 0) * gyro.y - ELEM(IMU_EKF_u, 3, 0) * gyro.z + ELEM(IMU_EKF_u, 5, 0) * ELEM(IMU_EKF_u, 2, 0);
-    ELEM(deltaM, 1, 0) = accel.y + ELEM(IMU_EKF_u, 2, 0) * gyro.z - ELEM(IMU_EKF_u, 4, 0) * gyro.x + ELEM(IMU_EKF_u, 5, 0) * ELEM(IMU_EKF_u, 3, 0);
+    ELEM(deltaM, 0, 0) = accel.x + ELEM(IMU_EKF_u, 5, 0) * ELEM(IMU_EKF_u, 2, 0);
+    ELEM(deltaM, 1, 0) = accel.y + ELEM(IMU_EKF_u, 5, 0) * ELEM(IMU_EKF_u, 3, 0);
 
     /* Gain matrix K */
     //_M = QuadProd(_C, _P) + _R;
@@ -218,6 +250,7 @@ void IMU_EKF_updateAccelGyro(axis3f_t* angles, axis3f_t* velocities, axis3f_t ac
     matrixMult(&_K, &_C, &TMP4);
     matrixMult(&TMP4, &_P, &TMP5);
     matrixSub(&_P, &TMP5, &_P);
+    matrixSymmetric(&_P, &_P);
 
     /* Set angles */
     angles->x = matrixGet(&IMU_EKF_u, 0, 0); //u(0,0) is roll according to IMU ref. frame
@@ -238,7 +271,7 @@ void IMU_EKF_updateVelXY(axis3f_t* angles, axis3f_t* velocities, float vx, float
 
     matrixInit(&deltaM, 2, 1);
     matrixInit(&R_tmp, 2, 2);
-    matrixInit(&C_tmp, 2, 7);
+    matrixInit(&C_tmp, 2, IMU_EKF_STATE_SIZE);
 
     /* R matrix */
     ELEM(R_tmp, 0, 0) = _r_vxy / dt_s;
@@ -272,6 +305,7 @@ void IMU_EKF_updateVelXY(axis3f_t* angles, axis3f_t* velocities, float vx, float
     matrixMult(&_K, &C_tmp, &TMP4);
     matrixMult(&TMP4, &_P, &TMP5);
     matrixSub(&_P, &TMP5, &_P);
+    matrixSymmetric(&_P, &_P);
 
     /* Set angles */
     angles->x = matrixGet(&IMU_EKF_u, 0, 0); //u(0,0) is roll according to IMU ref. frame
@@ -293,8 +327,8 @@ void IMU_EKF_updateVelXY(axis3f_t* angles, axis3f_t* velocities, float vx, float
 void IMU_EKF_updateVelZ(axis3f_t* angles, axis3f_t* velocities, float vz, float dt_s) {
     matrix_t C_tmp, K;
 
-    matrixInit(&C_tmp, 1, 7);
-    matrixInit(&K, 7, 1);
+    matrixInit(&C_tmp, 1, IMU_EKF_STATE_SIZE);
+    matrixInit(&K, IMU_EKF_STATE_SIZE, 1);
 
     /* C matrix */
     matrixSet(&C_tmp, 0, 4, 1.f);
@@ -308,13 +342,9 @@ void IMU_EKF_updateVelZ(axis3f_t* angles, axis3f_t* velocities, float vz, float 
 
     /* Faster Gain matrix K */
     float inv_m = 1.f / (ELEM(_P, 4, 4) + (_r_vz / dt_s));
-    ELEM(K, 0, 0) = ELEM(_P, 0, 4) * inv_m;
-    ELEM(K, 1, 0) = ELEM(_P, 1, 4) * inv_m;
-    ELEM(K, 2, 0) = ELEM(_P, 2, 4) * inv_m;
-    ELEM(K, 3, 0) = ELEM(_P, 3, 4) * inv_m;
-    ELEM(K, 4, 0) = ELEM(_P, 4, 4) * inv_m;
-    ELEM(K, 5, 0) = ELEM(_P, 5, 4) * inv_m;
-    ELEM(K, 6, 0) = ELEM(_P, 6, 4) * inv_m;
+    for (uint8_t i = 0; i < _P.rows; i++) {
+        ELEM(K, i, 0) = ELEM(_P, i, 4) * inv_m;
+    }
 
     /* Correct state vector */
     //u += K * deltaM;
@@ -327,6 +357,7 @@ void IMU_EKF_updateVelZ(axis3f_t* angles, axis3f_t* velocities, float vz, float 
     matrixMult(&K, &C_tmp, &TMP4);
     matrixMult(&TMP4, &_P, &TMP5);
     matrixSub(&_P, &TMP5, &_P);
+    matrixSymmetric(&_P, &_P);
 
     /* Set angles */
     angles->x = matrixGet(&IMU_EKF_u, 0, 0); //u(0,0) is roll according to IMU ref. frame
@@ -347,8 +378,8 @@ void IMU_EKF_updateVelZ(axis3f_t* angles, axis3f_t* velocities, float vz, float 
 void IMU_EKF_updateVelD(axis3f_t* angles, axis3f_t* velocities, float vD, float dt_s) {
     matrix_t C_tmp, K, M;
 
-    matrixInit(&C_tmp, 1, 7);
-    matrixInit(&K, 7, 1);
+    matrixInit(&C_tmp, 1, IMU_EKF_STATE_SIZE);
+    matrixInit(&K, IMU_EKF_STATE_SIZE, 1);
     matrixInit(&M, 1, 1);
 
     /* Trig functions */
@@ -363,11 +394,9 @@ void IMU_EKF_updateVelD(axis3f_t* angles, axis3f_t* velocities, float vD, float 
     ELEM(C_tmp, 0, 2) = -sTheta;
     ELEM(C_tmp, 0, 3) = cTheta * sPhi;
     ELEM(C_tmp, 0, 4) = cPhi * cTheta;
-    ELEM(C_tmp, 0, 5) = 0;
-    ELEM(C_tmp, 0, 6) = 0;
 
     /* Delta measures */
-    float deltaM = -vD - (ELEM(IMU_EKF_u, 4, 0) * cPhi * cTheta - ELEM(IMU_EKF_u, 2, 0) * sTheta + ELEM(IMU_EKF_u, 3, 0) * cTheta * sPhi);
+    float deltaM = vD - (ELEM(IMU_EKF_u, 4, 0) * cPhi * cTheta - ELEM(IMU_EKF_u, 2, 0) * sTheta + ELEM(IMU_EKF_u, 3, 0) * cTheta * sPhi);
 
     /* Gain matrix K */
     //_M = QuadProd(C_tmp,_P) + (_r_vd / dt_s);
@@ -388,6 +417,7 @@ void IMU_EKF_updateVelD(axis3f_t* angles, axis3f_t* velocities, float vD, float 
     matrixMult(&K, &C_tmp, &TMP4);
     matrixMult(&TMP4, &_P, &TMP5);
     matrixSub(&_P, &TMP5, &_P);
+    matrixSymmetric(&_P, &_P);
 
     /* Set angles */
     angles->x = matrixGet(&IMU_EKF_u, 0, 0); //u(0,0) is roll according to IMU ref. frame
@@ -407,21 +437,24 @@ void IMU_EKF_updateVelD(axis3f_t* angles, axis3f_t* velocities, float vD, float 
 
 /*----------------------------------Starting values----------------------------------------*/
 void IMU_EKF_reset(axis3f_t* angles, axis3f_t* velocities, float phi0, float theta0) {
+    /* Reset to a known stationary state */
     matrixSet(&IMU_EKF_u, 0, 0, phi0);
     matrixSet(&IMU_EKF_u, 1, 0, theta0);
-    matrixSet(&IMU_EKF_u, 2, 0, 0);
-    matrixSet(&IMU_EKF_u, 3, 0, 0);
-    matrixSet(&IMU_EKF_u, 4, 0, 0);
-    //matrixSet(&IMU_EKF_u, 5,0, c_damp_0);
+    matrixSet(&IMU_EKF_u, 2, 0, 0.0f);
+    matrixSet(&IMU_EKF_u, 3, 0, 0.0f);
+    matrixSet(&IMU_EKF_u, 4, 0, 0.0f);
+    matrixSet(&IMU_EKF_u, 5, 0, configIMU_EKF_C_DAMP0);
+    matrixSet(&IMU_EKF_u, 6, 0, 0.0f);
 
-    /* Set angles */
-    angles->x = matrixGet(&IMU_EKF_u, 0, 0); //u(0,0) is roll according to IMU ref. frame
-    angles->y = matrixGet(&IMU_EKF_u, 1, 0); //u(1,0) is pitch according to IMU ref. frame
+    /* Reset covariance matrix */
+    IMU_EKF_seedCovariance();
 
-    /* Set velocities */
-    velocities->x = matrixGet(&IMU_EKF_u, 2, 0); //u(2,0) is speed along local x axis according to IMU ref. frame
-    velocities->y = matrixGet(&IMU_EKF_u, 3, 0); //u(3,0) is speed along local x axis according to IMU ref. frame
-    velocities->z = matrixGet(&IMU_EKF_u, 4, 0); //u(4,0) is speed along local x axis according to IMU ref. frame
+    /* Output */
+    angles->x = matrixGet(&IMU_EKF_u, 0, 0);
+    angles->y = matrixGet(&IMU_EKF_u, 1, 0);
+    velocities->x = matrixGet(&IMU_EKF_u, 2, 0);
+    velocities->y = matrixGet(&IMU_EKF_u, 3, 0);
+    velocities->z = matrixGet(&IMU_EKF_u, 4, 0);
 
     return;
 }
@@ -469,4 +502,10 @@ void IMU_EKF_setVelDNoise(float vD) {
 }
 
 /*----------------------------Get values from state vector----------------------------------*/
-float IMU_EKF_getStateValue(uint8_t idx) { return matrixGet(&IMU_EKF_u, idx, 0); }
+float IMU_EKF_getStateValue(uint8_t idx) {
+    if (idx >= IMU_EKF_STATE_SIZE) {
+        return 0.0f;
+    }
+
+    return matrixGet(&IMU_EKF_u, idx, 0);
+}
