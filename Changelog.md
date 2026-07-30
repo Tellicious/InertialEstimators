@@ -1,9 +1,16 @@
 # Changelog
 
-## v2.1.0
+## v3.0.0
+
+**Breaking changes:**
+- Changed `IMU_EKF` and `AHRS_EKF` accelerometer correction API
 
 **Improvements:**
+- Improved EKF models behind `IMU_EKF` and `AHRS_EKF`
 - Changed mathematical constants used to align with `v1.25.0` of `ADV-Utils`
+
+**Bugfix:**
+- Fixed some bugs in `IMU_EKF` and `AHRS_EKF`
 
 ## v2.0.0
 

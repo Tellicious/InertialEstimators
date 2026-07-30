@@ -5,7 +5,7 @@
 ## C libraries included:
 ### AHRS
 #### Attitude and heading estimation based on accelerometer, gyroscope and magnetometer
-- ***AHRS_EKF_AV:*** quadcopter-specific EKF. Features accelerometer CoG offset compensation
+- ***AHRS_EKF_AV:*** quadcopter-specific EKF
 - ***AHRS_Madgwick:*** quaternion-based filter based on Sebastian Madgwick work
 - ***AHRS_PX4_SO3:*** quaternion-based complementary filter based on Robert Mahony work
 - ***AHRS_PX4_EKF:*** EKF based on PX4 code
@@ -13,7 +13,7 @@
 
 ### IMU
 #### Attitude-only estimation based on accelerometer and gyroscope 
-- ***IMU_EKF:*** quadcopter-specific EKF. Features accelerometer CoG offset compensation and includes optional correction via vertical speed reading (e.g. from `altitudeKF`)
+- ***IMU_EKF:*** quadcopter-specific EKF and includes optional correction via vertical speed reading (e.g. from `altitudeKF`)
 - ***IMU_Madgwick:*** quaternion-based filter based on Sebastian Madgwick work
 - ***IMU_quaternionST:*** quaternion-based filter based on STEVAL-FCU001v1 code
 
@@ -23,14 +23,14 @@
 ## C++ libraries included:
 ### AHRS
 #### Attitude and heading estimation based on accelerometer, gyroscope and magnetometer
-- ***AHRS_EKF_AV:*** quadcopter-specific EKF (same algorithm as `AHRS_EKF` C library)
+- ***AHRS_EKF_AV:*** quadcopter-specific EKF (similar algorithm to `AHRS_EKF` C library)
 - ***AHRS_Madgwick:*** quaternion-based filter based on Sebastian Madgwick work (same algorithm as `AHRS_Madgwick` C library)
 - ***AHRS_Attitude_SO3:*** quaternion-based complementary filter based on Robert Mahony work (same algorithm as `AHRS_PX4_S03` C library)
 - ***AHRS_Attitude_EKF:*** EKF based on PX4 code (same algorithm as `AHRS_PX4_EKF` C library)
 
 ### IMU
 #### Attitude-only estimation based on accelerometer and gyroscope 
-- ***IMU_EKF_AV:*** quadcopter-specific EKF (same algorithm as `IMU_EKF` C library)
+- ***IMU_EKF_AV:*** quadcopter-specific EKF (similar algorithm to `IMU_EKF` C library)
 - ***IMU_Madgwick:*** quaternion-based filter based on Sebastian Madgwick work (same algorithm as `IMU_Madgwick` C library)
 
 ## Configuration
@@ -38,6 +38,8 @@ Adding `USE_FAST_MATH` to compile definitions swaps all `sinf`, `cosf` and `sqrt
 
 ## Warning
 *C and C++ libraries, despite being based on the same algorithms, can contain different features*
+
+*After v3.0.0 `IMU_EKF` and `AHRS_EKF` C libraries have an improved algorihtm compared to their C++ alternative, with multiple improvements and bugfixes*
 
 *All C libraries require `ADV-utils` to run*
 
