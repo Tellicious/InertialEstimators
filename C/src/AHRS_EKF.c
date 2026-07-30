@@ -40,8 +40,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 
-static matrix_t
-    AHRS_EKF_u;         //(Roll=Phi, Pitch=Theta, Yaw=Psi, Xd, Yd, Zd, c_damp, b_az, incl, bconstGx, bconstGy, bconstGz) angles in rad, angular velocities in rad/s, velocities in m/s, c_damp in N*s/m
+static matrix_t AHRS_EKF_u; //(Roll=Phi, Pitch=Theta, Yaw=Psi, Xd, Yd, Zd, c_damp, b_az, incl, bconstGx, bconstGy, bconstGz) angles in rad, angular velocities in rad/s, velocities in m/s, c_damp in N*s/m
 static matrix_t _A;     //state matrix
 static matrix_t _B;     //input matrix
 static matrix_t _C_acc; //acceleration output matrix
@@ -57,26 +56,49 @@ static matrix_t _K;     //gain matrix
 static float _r_vxy, _r_vz, _r_vne, _r_vd; //velocities noise covariances
 static matrix_t TMP1, TMP2, TMP3, TMP4, TMP5;
 
+/* Private functions ---------------------------------------------------------*/
+
+/**
+ * \brief           Seed the covariance matrix with the initial state uncertainties
+ */
+static void AHRS_EKF_seedCovariance(void) {
+    matrixZeros(&_P);
+    ELEM(_P, 0, 0) = configAHRS_EKF_P0_ANGLES_STD * configAHRS_EKF_P0_ANGLES_STD;
+    ELEM(_P, 1, 1) = configAHRS_EKF_P0_ANGLES_STD * configAHRS_EKF_P0_ANGLES_STD;
+    ELEM(_P, 2, 2) = configAHRS_EKF_P0_PSI_STD * configAHRS_EKF_P0_PSI_STD;
+    ELEM(_P, 3, 3) = configAHRS_EKF_P0_VXY_STD * configAHRS_EKF_P0_VXY_STD;
+    ELEM(_P, 4, 4) = configAHRS_EKF_P0_VXY_STD * configAHRS_EKF_P0_VXY_STD;
+    ELEM(_P, 5, 5) = configAHRS_EKF_P0_VZ_STD * configAHRS_EKF_P0_VZ_STD;
+    ELEM(_P, 6, 6) = configAHRS_EKF_P0_C_DAMP_STD * configAHRS_EKF_P0_C_DAMP_STD;
+    ELEM(_P, 7, 7) = configAHRS_EKF_P0_B_AZ_STD * configAHRS_EKF_P0_B_AZ_STD;
+    ELEM(_P, 8, 8) = configAHRS_EKF_P0_INCL_STD * configAHRS_EKF_P0_INCL_STD;
+    ELEM(_P, 9, 9) = configAHRS_EKF_P0_B_G_STD * configAHRS_EKF_P0_B_G_STD;
+    ELEM(_P, 10, 10) = configAHRS_EKF_P0_B_G_STD * configAHRS_EKF_P0_B_G_STD;
+    ELEM(_P, 11, 11) = configAHRS_EKF_P0_B_G_STD * configAHRS_EKF_P0_B_G_STD;
+
+    return;
+}
+
 /* Functions -----------------------------------------------------------------*/
 void AHRS_EKF_init(axis3f_t* angles, axis3f_t* velocities) {
 
     /* Initialize matrices */
-    matrixInit(&AHRS_EKF_u, 12, 1);
-    matrixInit(&_A, 12, 12);
-    matrixInit(&_B, 12, 10);
-    matrixInit(&_C_acc, 2, 12);
-    matrixInit(&_C_mag, 3, 12);
-    matrixInit(&_P, 12, 12);
+    matrixInit(&AHRS_EKF_u, AHRS_EKF_STATE_SIZE, 1);
+    matrixInit(&_A, AHRS_EKF_STATE_SIZE, AHRS_EKF_STATE_SIZE);
+    matrixInit(&_B, AHRS_EKF_STATE_SIZE, 10);
+    matrixInit(&_C_acc, 2, AHRS_EKF_STATE_SIZE);
+    matrixInit(&_C_mag, 3, AHRS_EKF_STATE_SIZE);
+    matrixInit(&_P, AHRS_EKF_STATE_SIZE, AHRS_EKF_STATE_SIZE);
     matrixInit(&_W, 10, 10);
     matrixInit(&_R_acc, 2, 2);
     matrixInit(&_R_mag, 3, 3);
     matrixInit(&_M, 2, 2);
-    matrixInit(&_K, 12, 2);
-    matrixInit(&TMP1, 12, 2);
+    matrixInit(&_K, AHRS_EKF_STATE_SIZE, 2);
+    matrixInit(&TMP1, AHRS_EKF_STATE_SIZE, 2);
     matrixInit(&TMP2, 2, 2);
-    matrixInit(&TMP3, 12, 1);
-    matrixInit(&TMP4, 12, 12);
-    matrixInit(&TMP5, 12, 12);
+    matrixInit(&TMP3, AHRS_EKF_STATE_SIZE, 1);
+    matrixInit(&TMP4, AHRS_EKF_STATE_SIZE, AHRS_EKF_STATE_SIZE);
+    matrixInit(&TMP5, AHRS_EKF_STATE_SIZE, AHRS_EKF_STATE_SIZE);
 
     ELEM(AHRS_EKF_u, 0, 0) = configAHRS_EKF_PHI0;
     ELEM(AHRS_EKF_u, 1, 0) = configAHRS_EKF_THETA0;
@@ -105,6 +127,9 @@ void AHRS_EKF_init(axis3f_t* angles, axis3f_t* velocities) {
     _r_vne = configAHRS_EKF_VNE_NOISE;
     _r_vd = configAHRS_EKF_VD_NOISE;
 
+    /* Seed covariance matrix */
+    AHRS_EKF_seedCovariance();
+
     /* Set angles */
     angles->x = ELEM(AHRS_EKF_u, 0, 0);                 //u(0,0) is roll according to IMU ref. frame
     angles->y = ELEM(AHRS_EKF_u, 1, 0);                 //u(1,0) is pitch according to IMU ref. frame
@@ -129,6 +154,10 @@ void AHRS_EKF_prediction(float az, axis3f_t gyro) {
     float cPhi = COS(ELEM(AHRS_EKF_u, 0, 0));
     float sTheta = SIN(ELEM(AHRS_EKF_u, 1, 0));
     float cTheta = COS(ELEM(AHRS_EKF_u, 1, 0));
+    /* Keep cos(pitch) away from zero so that 1 / cos(pitch) stays finite at +-90 degrees of pitch */
+    if ((cTheta < configAHRS_EKF_C_THETA_MIN) && (cTheta > -configAHRS_EKF_C_THETA_MIN)) {
+        cTheta = (cTheta < 0.0f) ? -configAHRS_EKF_C_THETA_MIN : configAHRS_EKF_C_THETA_MIN;
+    }
     float inv_cTheta = 1.0f / cTheta;
     float tTheta = sTheta * inv_cTheta;
     float pr = gyro.x - ELEM(AHRS_EKF_u, 9, 0);
@@ -136,6 +165,9 @@ void AHRS_EKF_prediction(float az, axis3f_t gyro) {
     float rr = gyro.z - ELEM(AHRS_EKF_u, 11, 0);
     float tmp1 = sPhi * qr + cPhi * rr;
     float tmp2 = cPhi * qr - sPhi * rr;
+
+    /* Clamp c_damp to avoid instability */
+    ELEM(AHRS_EKF_u, 6, 0) = CONSTRAIN(ELEM(AHRS_EKF_u, 6, 0), configAHRS_EKF_C_DAMP_MIN, configAHRS_EKF_C_DAMP_MAX);
 
     /* A matrix */
     //_A.zeros(); //zeros or not?
@@ -158,16 +190,24 @@ void AHRS_EKF_prediction(float az, axis3f_t gyro) {
     ELEM(_A, 3, 4) = configAHRS_EKF_LOOP_TIME_S * rr;
     ELEM(_A, 3, 5) = -configAHRS_EKF_LOOP_TIME_S * qr;
     ELEM(_A, 3, 6) = -configAHRS_EKF_LOOP_TIME_S * ELEM(AHRS_EKF_u, 3, 0);
+    ELEM(_A, 3, 10) = configAHRS_EKF_LOOP_TIME_S * ELEM(AHRS_EKF_u, 5, 0);
+    ELEM(_A, 3, 11) = -configAHRS_EKF_LOOP_TIME_S * ELEM(AHRS_EKF_u, 4, 0);
     ELEM(_A, 4, 0) = configAHRS_EKF_LOOP_TIME_S * constG * cPhi * cTheta;
     ELEM(_A, 4, 1) = -configAHRS_EKF_LOOP_TIME_S * constG * sPhi * sTheta;
     ELEM(_A, 4, 3) = -configAHRS_EKF_LOOP_TIME_S * rr;
     ELEM(_A, 4, 4) = 1.0f - configAHRS_EKF_LOOP_TIME_S * ELEM(AHRS_EKF_u, 6, 0);
     ELEM(_A, 4, 5) = configAHRS_EKF_LOOP_TIME_S * pr;
     ELEM(_A, 4, 6) = -configAHRS_EKF_LOOP_TIME_S * ELEM(AHRS_EKF_u, 4, 0);
-    ELEM(_A, 5, 0) = configAHRS_EKF_LOOP_TIME_S * (ELEM(AHRS_EKF_u, 7, 0) - constG) * cTheta * sPhi;
-    ELEM(_A, 5, 1) = configAHRS_EKF_LOOP_TIME_S * (ELEM(AHRS_EKF_u, 7, 0) - constG) * cPhi * sTheta;
+    ELEM(_A, 4, 9) = -configAHRS_EKF_LOOP_TIME_S * ELEM(AHRS_EKF_u, 5, 0);
+    ELEM(_A, 4, 11) = configAHRS_EKF_LOOP_TIME_S * ELEM(AHRS_EKF_u, 3, 0);
+    ELEM(_A, 5, 0) = -configAHRS_EKF_LOOP_TIME_S * constG * cTheta * sPhi;
+    ELEM(_A, 5, 1) = -configAHRS_EKF_LOOP_TIME_S * constG * cPhi * sTheta;
+    ELEM(_A, 5, 3) = configAHRS_EKF_LOOP_TIME_S * qr;
+    ELEM(_A, 5, 4) = -configAHRS_EKF_LOOP_TIME_S * pr;
     ELEM(_A, 5, 5) = 1.0f;
-    ELEM(_A, 5, 7) = -configAHRS_EKF_LOOP_TIME_S * cPhi * cTheta;
+    ELEM(_A, 5, 7) = -configAHRS_EKF_LOOP_TIME_S;
+    ELEM(_A, 5, 9) = configAHRS_EKF_LOOP_TIME_S * ELEM(AHRS_EKF_u, 4, 0);
+    ELEM(_A, 5, 10) = -configAHRS_EKF_LOOP_TIME_S * ELEM(AHRS_EKF_u, 3, 0);
     ELEM(_A, 6, 6) = 1.0f;
     ELEM(_A, 7, 7) = 1.0f;
     ELEM(_A, 8, 8) = 1.0f;
@@ -188,6 +228,8 @@ void AHRS_EKF_prediction(float az, axis3f_t gyro) {
     ELEM(_B, 3, 2) = ELEM(AHRS_EKF_u, 4, 0);
     ELEM(_B, 4, 0) = ELEM(AHRS_EKF_u, 5, 0);
     ELEM(_B, 4, 2) = -ELEM(AHRS_EKF_u, 3, 0);
+    ELEM(_B, 5, 0) = -ELEM(AHRS_EKF_u, 4, 0);
+    ELEM(_B, 5, 1) = ELEM(AHRS_EKF_u, 3, 0);
     ELEM(_B, 5, 3) = 1.0f;
     ELEM(_B, 6, 4) = 1.0f;
     ELEM(_B, 7, 5) = 1.0f;
@@ -212,9 +254,10 @@ void AHRS_EKF_prediction(float az, axis3f_t gyro) {
     ELEM(AHRS_EKF_u, 2, 0) += configAHRS_EKF_LOOP_TIME_S * tmp1 * inv_cTheta;
     float delta_u3 = configAHRS_EKF_LOOP_TIME_S * (ELEM(AHRS_EKF_u, 4, 0) * rr - ELEM(AHRS_EKF_u, 5, 0) * qr - ELEM(AHRS_EKF_u, 6, 0) * ELEM(AHRS_EKF_u, 3, 0) - constG * sTheta);
     float delta_u4 = configAHRS_EKF_LOOP_TIME_S * (ELEM(AHRS_EKF_u, 5, 0) * pr - ELEM(AHRS_EKF_u, 3, 0) * rr - ELEM(AHRS_EKF_u, 6, 0) * ELEM(AHRS_EKF_u, 4, 0) + constG * sPhi * cTheta);
+    float delta_u5 = configAHRS_EKF_LOOP_TIME_S * (az - ELEM(AHRS_EKF_u, 7, 0) + constG * cPhi * cTheta + qr * ELEM(AHRS_EKF_u, 3, 0) - pr * ELEM(AHRS_EKF_u, 4, 0));
     ELEM(AHRS_EKF_u, 3, 0) += delta_u3;
     ELEM(AHRS_EKF_u, 4, 0) += delta_u4;
-    ELEM(AHRS_EKF_u, 5, 0) += configAHRS_EKF_LOOP_TIME_S * (az + (constG - ELEM(AHRS_EKF_u, 7, 0)) * cPhi * cTheta);
+    ELEM(AHRS_EKF_u, 5, 0) += delta_u5;
     /*ELEM(AHRS_EKF_u, 6,0) += 0;
      ELEM(AHRS_EKF_u, 7,0) += 0;
      ELEM(AHRS_EKF_u, 8,0) += 0;
@@ -225,29 +268,21 @@ void AHRS_EKF_prediction(float az, axis3f_t gyro) {
     return;
 }
 
-/*-----------------------------Update with accel & gyro------------------------------------*/
-void AHRS_EKF_updateAccelGyro(axis3f_t* angles, axis3f_t* velocities, axis3f_t accel, axis3f_t gyro) {
+/*---------------------------------Update with accel---------------------------------------*/
+void AHRS_EKF_updateAccel(axis3f_t* angles, axis3f_t* velocities, axis3f_t accel) {
     matrix_t deltaM;
     matrixInit(&deltaM, 2, 1);
-    /* Remove bias */
-    float pr = gyro.x - ELEM(AHRS_EKF_u, 9, 0);
-    float qr = gyro.y - ELEM(AHRS_EKF_u, 10, 0);
-    float rr = gyro.z - ELEM(AHRS_EKF_u, 11, 0);
 
     /* C matrix */
     //_C.zeros(); //zeros or not?
     ELEM(_C_acc, 0, 3) = -ELEM(AHRS_EKF_u, 6, 0);
-    ELEM(_C_acc, 0, 4) = rr;
-    ELEM(_C_acc, 0, 5) = -qr;
     ELEM(_C_acc, 0, 6) = -ELEM(AHRS_EKF_u, 3, 0);
-    ELEM(_C_acc, 1, 3) = -rr;
     ELEM(_C_acc, 1, 4) = -ELEM(AHRS_EKF_u, 6, 0);
-    ELEM(_C_acc, 1, 5) = pr;
     ELEM(_C_acc, 1, 6) = -ELEM(AHRS_EKF_u, 4, 0);
 
     /* Delta measures */
-    ELEM(deltaM, 0, 0) = accel.x + ELEM(AHRS_EKF_u, 5, 0) * qr - ELEM(AHRS_EKF_u, 4, 0) * rr + ELEM(AHRS_EKF_u, 6, 0) * ELEM(AHRS_EKF_u, 3, 0);
-    ELEM(deltaM, 1, 0) = accel.y + ELEM(AHRS_EKF_u, 3, 0) * rr - ELEM(AHRS_EKF_u, 5, 0) * pr + ELEM(AHRS_EKF_u, 6, 0) * ELEM(AHRS_EKF_u, 4, 0);
+    ELEM(deltaM, 0, 0) = accel.x + ELEM(AHRS_EKF_u, 6, 0) * ELEM(AHRS_EKF_u, 3, 0);
+    ELEM(deltaM, 1, 0) = accel.y + ELEM(AHRS_EKF_u, 6, 0) * ELEM(AHRS_EKF_u, 4, 0);
 
     /* Gain matrix K */
     //_M = QuadProd(_C, _P) + _R;
@@ -269,6 +304,7 @@ void AHRS_EKF_updateAccelGyro(axis3f_t* angles, axis3f_t* velocities, axis3f_t a
     matrixMult(&_K, &_C_acc, &TMP4);
     matrixMult(&TMP4, &_P, &TMP5);
     matrixSub(&_P, &TMP5, &_P);
+    matrixSymmetric(&_P, &_P);
 
     /* Set angles */
     angles->x = ELEM(AHRS_EKF_u, 0, 0);                    //u(0,0) is roll according to IMU ref. frame
@@ -291,17 +327,33 @@ void AHRS_EKF_updateAccelGyro(axis3f_t* angles, axis3f_t* velocities, axis3f_t a
 void AHRS_EKF_updateMag(axis3f_t* angles, axis3f_t* velocities, axis3f_t mag) {
     matrix_t deltaM, M_mag, TMP1_mag, TMP2_mag, K_mag;
 
+    /* Discard the reading if it is not usable */
+    float norm2 = (mag.x * mag.x) + (mag.y * mag.y) + (mag.z * mag.z);
+    if (isnan(norm2) || isinf(norm2) || (norm2 <= 0.0f)) {
+        /* Set angles */
+        angles->x = ELEM(AHRS_EKF_u, 0, 0);                    //u(0,0) is roll according to IMU ref. frame
+        angles->y = ELEM(AHRS_EKF_u, 1, 0);                    //u(1,0) is pitch according to IMU ref. frame
+        angles->z = fmodf(ELEM(AHRS_EKF_u, 2, 0), constTWOPI); //u(2,0) is yaw according to IMU ref. frame
+        if (angles->z < 0) {
+            angles->z += constTWOPI;
+        }
+
+        /* Set velocities */
+        velocities->x = ELEM(AHRS_EKF_u, 3, 0); //u(3,0) is speed along local x axis according to IMU ref. frame
+        velocities->y = ELEM(AHRS_EKF_u, 4, 0); //u(4,0) is speed along local y axis according to IMU ref. frame
+        velocities->z = ELEM(AHRS_EKF_u, 5, 0); //u(5,0) is speed along local z axis according to IMU ref. frame
+
+        return;
+    }
+
     matrixInit(&deltaM, 3, 1);
     matrixInit(&M_mag, 3, 3);
-    matrixInit(&TMP1_mag, 12, 3);
+    matrixInit(&TMP1_mag, AHRS_EKF_STATE_SIZE, 3);
     matrixInit(&TMP2_mag, 3, 3);
-    matrixInit(&K_mag, 12, 3);
+    matrixInit(&K_mag, AHRS_EKF_STATE_SIZE, 3);
 
     /* Normalize readings */
-    float invNorm = INVSQRT(mag.x * mag.x + mag.y * mag.y + mag.z * mag.z);
-    if (isnan(invNorm) || isinf(invNorm)) {
-        invNorm = 1.f;
-    }
+    float invNorm = INVSQRT(norm2);
     mag.x *= invNorm;
     mag.y *= invNorm;
     mag.z *= invNorm;
@@ -321,7 +373,7 @@ void AHRS_EKF_updateMag(axis3f_t* angles, axis3f_t* velocities, axis3f_t mag) {
     float tmp1 = cPhi * sPsi - cPsi * sPhi * sTheta;
     ELEM(_C_mag, 0, 1) = -sInc * cTheta - cInc * cPsi * sTheta;
     ELEM(_C_mag, 0, 2) = -cInc * cTheta * sPsi;
-    ELEM(_C_mag, 0, 7) = -cInc * sTheta - cPsi * cTheta * sInc;
+    ELEM(_C_mag, 0, 8) = -cInc * sTheta - cPsi * cTheta * sInc;
     ELEM(_C_mag, 1, 0) = cInc * (sPhi * sPsi + cPhi * cPsi * sTheta) + cPhi * sInc * cTheta;
     ELEM(_C_mag, 1, 1) = cInc * cPsi * cTheta * sPhi - sInc * sPhi * sTheta;
     ELEM(_C_mag, 1, 2) = -cInc * (cPhi * cPsi + sPhi * sPsi * sTheta);
@@ -355,6 +407,7 @@ void AHRS_EKF_updateMag(axis3f_t* angles, axis3f_t* velocities, axis3f_t mag) {
     matrixMult(&K_mag, &_C_mag, &TMP4);
     matrixMult(&TMP4, &_P, &TMP5);
     matrixSub(&_P, &TMP5, &_P);
+    matrixSymmetric(&_P, &_P);
 
     /* Set angles */
     angles->x = ELEM(AHRS_EKF_u, 0, 0);                    //u(0,0) is roll according to IMU ref. frame
@@ -383,7 +436,7 @@ void AHRS_EKF_updateVelXY(axis3f_t* angles, axis3f_t* velocities, float vx, floa
 
     matrixInit(&deltaM, 2, 1);
     matrixInit(&R_tmp, 2, 2);
-    matrixInit(&C_tmp, 2, 12);
+    matrixInit(&C_tmp, 2, AHRS_EKF_STATE_SIZE);
 
     /* R matrix */
     ELEM(R_tmp, 0, 0) = _r_vxy / dt_s;
@@ -417,6 +470,7 @@ void AHRS_EKF_updateVelXY(axis3f_t* angles, axis3f_t* velocities, float vx, floa
     matrixMult(&_K, &C_tmp, &TMP4);
     matrixMult(&TMP4, &_P, &TMP5);
     matrixSub(&_P, &TMP5, &_P);
+    matrixSymmetric(&_P, &_P);
 
     /* Set angles */
     angles->x = ELEM(AHRS_EKF_u, 0, 0);                    //u(0,0) is roll according to IMU ref. frame
@@ -442,8 +496,8 @@ void AHRS_EKF_updateVelXY(axis3f_t* angles, axis3f_t* velocities, float vx, floa
 void AHRS_EKF_updateVelZ(axis3f_t* angles, axis3f_t* velocities, float vz, float dt_s) {
     matrix_t C_tmp, K;
 
-    matrixInit(&C_tmp, 1, 12);
-    matrixInit(&K, 12, 1);
+    matrixInit(&C_tmp, 1, AHRS_EKF_STATE_SIZE);
+    matrixInit(&K, AHRS_EKF_STATE_SIZE, 1);
 
     /* C matrix */
     ELEM(C_tmp, 0, 5) = 1.f;
@@ -457,18 +511,9 @@ void AHRS_EKF_updateVelZ(axis3f_t* angles, axis3f_t* velocities, float vz, float
 
     /* Faster Gain matrix K */
     float inv_m = 1.f / (ELEM(_P, 5, 5) + (_r_vz / dt_s));
-    ELEM(K, 0, 0) = ELEM(_P, 0, 5) * inv_m;
-    ELEM(K, 1, 0) = ELEM(_P, 1, 5) * inv_m;
-    ELEM(K, 2, 0) = ELEM(_P, 2, 5) * inv_m;
-    ELEM(K, 3, 0) = ELEM(_P, 3, 5) * inv_m;
-    ELEM(K, 4, 0) = ELEM(_P, 4, 5) * inv_m;
-    ELEM(K, 5, 0) = ELEM(_P, 5, 5) * inv_m;
-    ELEM(K, 6, 0) = ELEM(_P, 6, 5) * inv_m;
-    ELEM(K, 7, 0) = ELEM(_P, 7, 5) * inv_m;
-    ELEM(K, 8, 0) = ELEM(_P, 8, 5) * inv_m;
-    ELEM(K, 9, 0) = ELEM(_P, 9, 5) * inv_m;
-    ELEM(K, 10, 0) = ELEM(_P, 10, 5) * inv_m;
-    ELEM(K, 11, 0) = ELEM(_P, 11, 5) * inv_m;
+    for (uint8_t i = 0; i < _P.rows; i++) {
+        ELEM(K, i, 0) = ELEM(_P, i, 5) * inv_m;
+    }
 
     /* Correct state vector */
     //u += K * deltaM;
@@ -481,6 +526,7 @@ void AHRS_EKF_updateVelZ(axis3f_t* angles, axis3f_t* velocities, float vz, float
     matrixMult(&K, &C_tmp, &TMP4);
     matrixMult(&TMP4, &_P, &TMP5);
     matrixSub(&_P, &TMP5, &_P);
+    matrixSymmetric(&_P, &_P);
 
     /* Set angles */
     angles->x = ELEM(AHRS_EKF_u, 0, 0);                    //u(0,0) is roll according to IMU ref. frame
@@ -507,7 +553,7 @@ void AHRS_EKF_updateVelNE(axis3f_t* angles, axis3f_t* velocities, float vN, floa
 
     matrixInit(&deltaM, 2, 1);
     matrixInit(&R_tmp, 2, 2);
-    matrixInit(&C_tmp, 2, 12);
+    matrixInit(&C_tmp, 2, AHRS_EKF_STATE_SIZE);
 
     /* R matrix */
     ELEM(R_tmp, 0, 0) = _r_vne / dt_s;
@@ -529,7 +575,7 @@ void AHRS_EKF_updateVelNE(axis3f_t* angles, axis3f_t* velocities, float vN, floa
     float tmp4 = cPsi * sPhi - cPhi * sPsi * sTheta;
     ELEM(C_tmp, 0, 0) = ELEM(AHRS_EKF_u, 4, 0) * tmp1 + ELEM(AHRS_EKF_u, 5, 0) * tmp3;
     ELEM(C_tmp, 0, 1) = ELEM(AHRS_EKF_u, 5, 0) * cPhi * cPsi * cTheta - ELEM(AHRS_EKF_u, 3, 0) * cPsi * sTheta + ELEM(AHRS_EKF_u, 4, 0) * cPsi * cTheta * sPhi;
-    ELEM(C_tmp, 0, 2) = ELEM(AHRS_EKF_u, 5, 0) * -ELEM(AHRS_EKF_u, 4, 0) * tmp2 - ELEM(AHRS_EKF_u, 3, 0) * cTheta * sPsi;
+    ELEM(C_tmp, 0, 2) = ELEM(AHRS_EKF_u, 5, 0) * tmp4 - ELEM(AHRS_EKF_u, 4, 0) * tmp2 - ELEM(AHRS_EKF_u, 3, 0) * cTheta * sPsi;
     ELEM(C_tmp, 0, 3) = cPsi * cTheta;
     ELEM(C_tmp, 0, 4) = -tmp3;
     ELEM(C_tmp, 0, 5) = tmp1;
@@ -538,7 +584,7 @@ void AHRS_EKF_updateVelNE(axis3f_t* angles, axis3f_t* velocities, float vN, floa
     ELEM(C_tmp, 1, 2) = ELEM(AHRS_EKF_u, 5, 0) * tmp1 - ELEM(AHRS_EKF_u, 4, 0) * tmp3 + ELEM(AHRS_EKF_u, 3, 0) * cPsi * cTheta;
     ELEM(C_tmp, 1, 3) = cTheta * sPsi;
     ELEM(C_tmp, 1, 4) = tmp2;
-    ELEM(C_tmp, 1, 5) = tmp4;
+    ELEM(C_tmp, 1, 5) = -tmp4;
 
     /* Delta measures */
     ELEM(deltaM, 0, 0) = vN - (ELEM(AHRS_EKF_u, 5, 0) * tmp1 - ELEM(AHRS_EKF_u, 4, 0) * tmp3 + ELEM(AHRS_EKF_u, 3, 0) * cPsi * cTheta);
@@ -564,6 +610,7 @@ void AHRS_EKF_updateVelNE(axis3f_t* angles, axis3f_t* velocities, float vN, floa
     matrixMult(&_K, &C_tmp, &TMP4);
     matrixMult(&TMP4, &_P, &TMP5);
     matrixSub(&_P, &TMP5, &_P);
+    matrixSymmetric(&_P, &_P);
 
     /* Set angles */
     angles->x = ELEM(AHRS_EKF_u, 0, 0);                    //u(0,0) is roll according to IMU ref. frame
@@ -589,8 +636,8 @@ void AHRS_EKF_updateVelNE(axis3f_t* angles, axis3f_t* velocities, float vN, floa
 void AHRS_EKF_updateVelD(axis3f_t* angles, axis3f_t* velocities, float vD, float dt_s) {
     matrix_t C_tmp, K, M;
 
-    matrixInit(&C_tmp, 1, 12);
-    matrixInit(&K, 12, 1);
+    matrixInit(&C_tmp, 1, AHRS_EKF_STATE_SIZE);
+    matrixInit(&K, AHRS_EKF_STATE_SIZE, 1);
     matrixInit(&M, 1, 1);
 
     /* Trig functions */
@@ -629,6 +676,7 @@ void AHRS_EKF_updateVelD(axis3f_t* angles, axis3f_t* velocities, float vD, float
     matrixMult(&K, &C_tmp, &TMP4);
     matrixMult(&TMP4, &_P, &TMP5);
     matrixSub(&_P, &TMP5, &_P);
+    matrixSymmetric(&_P, &_P);
 
     /* Set angles */
     angles->x = ELEM(AHRS_EKF_u, 0, 0);                    //u(0,0) is roll according to IMU ref. frame
@@ -643,6 +691,10 @@ void AHRS_EKF_updateVelD(axis3f_t* angles, axis3f_t* velocities, float vD, float
     velocities->y = ELEM(AHRS_EKF_u, 4, 0); //u(4,0) is speed along local y axis according to IMU ref. frame
     velocities->z = ELEM(AHRS_EKF_u, 5, 0); //u(5,0) is speed along local z axis according to IMU ref. frame
 
+    matrixDelete(&C_tmp);
+    matrixDelete(&K);
+    matrixDelete(&M);
+
     return;
 }
 
@@ -651,11 +703,18 @@ void AHRS_EKF_reset(axis3f_t* angles, axis3f_t* velocities, float phi0, float th
     matrixSet(&AHRS_EKF_u, 0, 0, phi0);
     matrixSet(&AHRS_EKF_u, 1, 0, theta0);
     matrixSet(&AHRS_EKF_u, 2, 0, psi0);
-    matrixSet(&AHRS_EKF_u, 3, 0, 0);
-    matrixSet(&AHRS_EKF_u, 4, 0, 0);
-    matrixSet(&AHRS_EKF_u, 5, 0, 0);
-    // matrixSet(&AHRS_EKF_u, 6, 0, c_damp_0);
-    // matrixSet(&AHRS_EKF_u, 8, 0, incl_0);
+    matrixSet(&AHRS_EKF_u, 3, 0, 0.0f);
+    matrixSet(&AHRS_EKF_u, 4, 0, 0.0f);
+    matrixSet(&AHRS_EKF_u, 5, 0, 0.0f);
+    matrixSet(&AHRS_EKF_u, 6, 0, configAHRS_EKF_C_DAMP0);
+    matrixSet(&AHRS_EKF_u, 7, 0, 0.0f);
+    matrixSet(&AHRS_EKF_u, 8, 0, configAHRS_EKF_INCL0);
+    matrixSet(&AHRS_EKF_u, 9, 0, 0.0f);
+    matrixSet(&AHRS_EKF_u, 10, 0, 0.0f);
+    matrixSet(&AHRS_EKF_u, 11, 0, 0.0f);
+
+    /* Reset covariance matrix */
+    AHRS_EKF_seedCovariance();
 
     /* Set angles */
     angles->x = ELEM(AHRS_EKF_u, 0, 0);                    //u(0,0) is roll according to IMU ref. frame
@@ -735,4 +794,10 @@ void AHRS_EKF_setVelDNoise(float vD) {
 }
 
 /*----------------------------Get values from state vector----------------------------------*/
-float AHRS_EKF_getStateValue(uint8_t idx) { return matrixGet(&AHRS_EKF_u, idx, 0); }
+float AHRS_EKF_getStateValue(uint8_t idx) {
+    if (idx >= AHRS_EKF_STATE_SIZE) {
+        return 0.0f;
+    }
+
+    return matrixGet(&AHRS_EKF_u, idx, 0);
+}

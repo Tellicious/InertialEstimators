@@ -66,6 +66,16 @@ extern "C" {
 #define configAHRS_EKF_C_DAMP0 0.07413f
 #endif
 
+/* Lower bound of the damping coefficient estimate, in N*s/m */
+#ifndef configAHRS_EKF_C_DAMP_MIN
+#define configAHRS_EKF_C_DAMP_MIN (0.1f * configAHRS_EKF_C_DAMP0)
+#endif
+
+/* Upper bound of the damping coefficient estimate, in N*s/m */
+#ifndef configAHRS_EKF_C_DAMP_MAX
+#define configAHRS_EKF_C_DAMP_MAX (20.f * configAHRS_EKF_C_DAMP0)
+#endif
+
 /* Initial value of the inclination of the magnetic field, in rad
 Northern Emisphere positive (pointing down), Southern Emisphere negative (pointing up) */
 #ifndef configAHRS_EKF_INCL0
@@ -110,7 +120,7 @@ Northern Emisphere positive (pointing down), Southern Emisphere negative (pointi
 
 /* Damping coefficient noise */
 #ifndef configAHRS_EKF_C_DAMP_NOISE
-#define configAHRS_EKF_C_DAMP_NOISE 5e-4f
+#define configAHRS_EKF_C_DAMP_NOISE 1e-6f
 #endif
 
 /* Magnetic field inclination noise */
@@ -120,7 +130,7 @@ Northern Emisphere positive (pointing down), Southern Emisphere negative (pointi
 
 /* Bias acc z noise */
 #ifndef configAHRS_EKF_B_AZ_NOISE
-#define configAHRS_EKF_B_AZ_NOISE 1e-3f
+#define configAHRS_EKF_B_AZ_NOISE 1e-4f
 #endif
 
 /* Bias gyro noise */
@@ -148,6 +158,60 @@ Northern Emisphere positive (pointing down), Southern Emisphere negative (pointi
 #define configAHRS_EKF_VD_NOISE 1e-3f
 #endif
 
+/* Initial state uncertainties (1-sigma), used to seed the covariance matrix on init and reset.
+   These must reflect how wrong the initial state can actually be: seeding the covariance too small
+   makes the filter overconfident and, since the attitude enters the model through sin() terms, it can
+   settle on the inverted solution instead of the correct one. */
+
+/* Initial standard deviation of the roll and pitch estimates, in rad */
+#ifndef configAHRS_EKF_P0_ANGLES_STD
+#define configAHRS_EKF_P0_ANGLES_STD 0.3f
+#endif
+
+/* Initial standard deviation of the yaw estimate, in rad. Kept separate from roll and pitch because yaw is
+   only observable through the magnetometer, so its initial error is typically larger */
+#ifndef configAHRS_EKF_P0_PSI_STD
+#define configAHRS_EKF_P0_PSI_STD 0.5f
+#endif
+
+/* Initial standard deviation of the x,y local velocity estimates, in m/s */
+#ifndef configAHRS_EKF_P0_VXY_STD
+#define configAHRS_EKF_P0_VXY_STD 5.f
+#endif
+
+/* Initial standard deviation of the z local velocity estimate, in m/s */
+#ifndef configAHRS_EKF_P0_VZ_STD
+#define configAHRS_EKF_P0_VZ_STD 1.f
+#endif
+
+/* Initial standard deviation of the damping coefficient estimate, in N*s/m */
+#ifndef configAHRS_EKF_P0_C_DAMP_STD
+#define configAHRS_EKF_P0_C_DAMP_STD (0.5f * configAHRS_EKF_C_DAMP0)
+#endif
+
+/* Initial standard deviation of the z-axis acceleration bias estimate, in m/s^2 */
+#ifndef configAHRS_EKF_P0_B_AZ_STD
+#define configAHRS_EKF_P0_B_AZ_STD 0.5f
+#endif
+
+/* Initial standard deviation of the magnetic field inclination estimate, in rad */
+#ifndef configAHRS_EKF_P0_INCL_STD
+#define configAHRS_EKF_P0_INCL_STD 0.1f
+#endif
+
+/* Initial standard deviation of the gyroscope bias estimates, in rad/s */
+#ifndef configAHRS_EKF_P0_B_G_STD
+#define configAHRS_EKF_P0_B_G_STD 0.02f
+#endif
+
+/* Lower bound on the magnitude of cos(pitch), used to keep 1 / cos(pitch) finite near +-90 degrees */
+#ifndef configAHRS_EKF_C_THETA_MIN
+#define configAHRS_EKF_C_THETA_MIN 1e-3f
+#endif
+
+/* Number of elements of the EKF state vector */
+#define AHRS_EKF_STATE_SIZE 12
+
 /* Function prototypes -------------------------------------------------------*/
 
 /**
@@ -167,14 +231,13 @@ void AHRS_EKF_init(axis3f_t* angles, axis3f_t* velocities);
 void AHRS_EKF_prediction(float az, axis3f_t gyro);
 
 /**
- * \brief           Update EKF with accelerometer and gyro readings
+ * \brief           Update EKF with accelerometer readings
  *
  * \param[out]      angles: Euler angles vector
  * \param[out]      velocities: translational velocities along local axes
  * \param[in]       accel: accelerometer measurements vector, in m/s^2
- * \param[in]       gyro: gyroscope measurements vector, in rad/s
  */
-void AHRS_EKF_updateAccelGyro(axis3f_t* angles, axis3f_t* velocities, axis3f_t accel, axis3f_t gyro);
+void AHRS_EKF_updateAccel(axis3f_t* angles, axis3f_t* velocities, axis3f_t accel);
 
 /**
  * \brief           Update EKF with magnetometer readings
@@ -241,9 +304,9 @@ void AHRS_EKF_reset(axis3f_t* angles, axis3f_t* velocities, float phi0, float th
 /**
  * \brief           Set EKF input noises
  * 
- * \param[in]       az: noise of z-axis acceleration
  * \param[in]       gxy: noise of x-y-axes rotational speed
  * \param[in]       gz: noise of z-axis rotational speed
+ * \param[in]       az: noise of z-axis acceleration
  * \param[in]       c_damp: noise of translational damping coefficient
  * \param[in]       b_az: noise of z-axis acceleration bias
  * \param[in]       incl: noise of magnetic field inclination vector
@@ -298,7 +361,7 @@ void AHRS_EKF_setVelDNoise(float vD);
  *
  * \param[in]       idx: index of required element (Roll=Phi, Pitch=Theta, Yaw=Psi, Xd, Yd, Zd, c_damp, b_az, incl, b_gx, b_gy, b_gz)
  *
- * \return          Value of requested item
+ * \return          Value of requested item, 0 if idx is out of range
  */
 float AHRS_EKF_getStateValue(uint8_t idx);
 
