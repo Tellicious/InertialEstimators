@@ -40,7 +40,8 @@
 
 /* Private variables ---------------------------------------------------------*/
 
-static matrix_t AHRS_EKF_u; //(Roll=Phi, Pitch=Theta, Yaw=Psi, Xd, Yd, Zd, c_damp, b_az, incl, bconstGx, bconstGy, bconstGz) angles in rad, angular velocities in rad/s, velocities in m/s, c_damp in N*s/m
+static matrix_t
+    AHRS_EKF_u; //(Roll=Phi, Pitch=Theta, Yaw=Psi, Xd, Yd, Zd, c_damp, b_az, incl, bconstGx, bconstGy, bconstGz) angles in rad, angular velocities in rad/s, velocities in m/s, c_damp in N*s/m
 static matrix_t _A;     //state matrix
 static matrix_t _B;     //input matrix
 static matrix_t _C_acc; //acceleration output matrix
@@ -131,8 +132,8 @@ void AHRS_EKF_init(axis3f_t* angles, axis3f_t* velocities) {
     AHRS_EKF_seedCovariance();
 
     /* Set angles */
-    angles->x = ELEM(AHRS_EKF_u, 0, 0);                 //u(0,0) is roll according to IMU ref. frame
-    angles->y = ELEM(AHRS_EKF_u, 1, 0);                 //u(1,0) is pitch according to IMU ref. frame
+    angles->x = ELEM(AHRS_EKF_u, 0, 0);                    //u(0,0) is roll according to IMU ref. frame
+    angles->y = ELEM(AHRS_EKF_u, 1, 0);                    //u(1,0) is pitch according to IMU ref. frame
     angles->z = fmodf(ELEM(AHRS_EKF_u, 2, 0), constTWOPI); //u(2,0) is yaw according to IMU ref. frame
     if (angles->z < 0) {
         angles->z += constTWOPI;
@@ -252,9 +253,12 @@ void AHRS_EKF_prediction(float az, axis3f_t gyro) {
     ELEM(AHRS_EKF_u, 0, 0) += configAHRS_EKF_LOOP_TIME_S * (pr + tmp1 * tTheta);
     ELEM(AHRS_EKF_u, 1, 0) += configAHRS_EKF_LOOP_TIME_S * tmp2;
     ELEM(AHRS_EKF_u, 2, 0) += configAHRS_EKF_LOOP_TIME_S * tmp1 * inv_cTheta;
-    float delta_u3 = configAHRS_EKF_LOOP_TIME_S * (ELEM(AHRS_EKF_u, 4, 0) * rr - ELEM(AHRS_EKF_u, 5, 0) * qr - ELEM(AHRS_EKF_u, 6, 0) * ELEM(AHRS_EKF_u, 3, 0) - constG * sTheta);
-    float delta_u4 = configAHRS_EKF_LOOP_TIME_S * (ELEM(AHRS_EKF_u, 5, 0) * pr - ELEM(AHRS_EKF_u, 3, 0) * rr - ELEM(AHRS_EKF_u, 6, 0) * ELEM(AHRS_EKF_u, 4, 0) + constG * sPhi * cTheta);
-    float delta_u5 = configAHRS_EKF_LOOP_TIME_S * (az - ELEM(AHRS_EKF_u, 7, 0) + constG * cPhi * cTheta + qr * ELEM(AHRS_EKF_u, 3, 0) - pr * ELEM(AHRS_EKF_u, 4, 0));
+    float delta_u3 = configAHRS_EKF_LOOP_TIME_S
+                     * (ELEM(AHRS_EKF_u, 4, 0) * rr - ELEM(AHRS_EKF_u, 5, 0) * qr - ELEM(AHRS_EKF_u, 6, 0) * ELEM(AHRS_EKF_u, 3, 0) - constG * sTheta);
+    float delta_u4 = configAHRS_EKF_LOOP_TIME_S
+                     * (ELEM(AHRS_EKF_u, 5, 0) * pr - ELEM(AHRS_EKF_u, 3, 0) * rr - ELEM(AHRS_EKF_u, 6, 0) * ELEM(AHRS_EKF_u, 4, 0) + constG * sPhi * cTheta);
+    float delta_u5 =
+        configAHRS_EKF_LOOP_TIME_S * (az - ELEM(AHRS_EKF_u, 7, 0) + constG * cPhi * cTheta + qr * ELEM(AHRS_EKF_u, 3, 0) - pr * ELEM(AHRS_EKF_u, 4, 0));
     ELEM(AHRS_EKF_u, 3, 0) += delta_u3;
     ELEM(AHRS_EKF_u, 4, 0) += delta_u4;
     ELEM(AHRS_EKF_u, 5, 0) += delta_u5;

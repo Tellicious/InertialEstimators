@@ -590,8 +590,8 @@ void AHRS_VQF_updateGyro(axis3f_t gyro) {
 
         const float biasClipRad = params.biasClip * (constPI / 180.0f);
         const float thGyrRad = params.restThGyr * (constPI / 180.0f);
-        if (state.restLastSquaredDeviations.data[0] >= thGyrRad * thGyrRad || fabsf(state.restLastGyrLp.x) > biasClipRad || fabsf(state.restLastGyrLp.y) > biasClipRad
-            || fabsf(state.restLastGyrLp.z) > biasClipRad) {
+        if (state.restLastSquaredDeviations.data[0] >= thGyrRad * thGyrRad || fabsf(state.restLastGyrLp.x) > biasClipRad
+            || fabsf(state.restLastGyrLp.y) > biasClipRad || fabsf(state.restLastGyrLp.z) > biasClipRad) {
             state.restT = 0.0f;
             state.restDetected = 0u;
         }
@@ -807,14 +807,16 @@ void AHRS_VQF_updateMag(axis3f_t mag) {
         state.magNormDip.data[1] = -asinf(CONSTRAIN(magEarth.z / fmaxf(norm, VQF_EPS), -1.0f, 1.0f));
 
         if (params.magCurrentTau > 0.0f) {
-            vqf_filterVec(&state.magNormDip, params.magCurrentTau, configAHRS_VQF_MAG_UPDATE_TIME_S, &coeffs.magNormDipLpB, &coeffs.magNormDipLpA, &state.magNormDipLpState, &state.magNormDip);
+            vqf_filterVec(&state.magNormDip, params.magCurrentTau, configAHRS_VQF_MAG_UPDATE_TIME_S, &coeffs.magNormDipLpB, &coeffs.magNormDipLpA,
+                          &state.magNormDipLpState, &state.magNormDip);
         }
 
         /* Disturbance detection */
         const float refNorm = state.magRefNorm;
         const float refDip = state.magRefDip;
 
-        if (refNorm > 0.0f && fabsf(state.magNormDip.data[0] - refNorm) < params.magNormTh * refNorm && fabsf(state.magNormDip.data[1] - refDip) < params.magDipTh * (constPI / 180.0f)) {
+        if (refNorm > 0.0f && fabsf(state.magNormDip.data[0] - refNorm) < params.magNormTh * refNorm
+            && fabsf(state.magNormDip.data[1] - refDip) < params.magDipTh * (constPI / 180.0f)) {
             state.magUndisturbedT += configAHRS_VQF_MAG_UPDATE_TIME_S;
             if (state.magUndisturbedT >= params.magMinUndisturbedTime) {
                 state.magDistDetected = 0u;
@@ -836,7 +838,8 @@ void AHRS_VQF_updateMag(axis3f_t mag) {
             state.magCandidateNorm += coeffs.kMagRef * (state.magNormDip.data[0] - state.magCandidateNorm);
             state.magCandidateDip += coeffs.kMagRef * (state.magNormDip.data[1] - state.magCandidateDip);
 
-            if (state.magDistDetected && (state.magCandidateT >= params.magNewTime || (state.magRefNorm == 0.0f && state.magCandidateT >= params.magNewFirstTime))) {
+            if (state.magDistDetected
+                && (state.magCandidateT >= params.magNewTime || (state.magRefNorm == 0.0f && state.magCandidateT >= params.magNewFirstTime))) {
                 state.magRefNorm = state.magCandidateNorm;
                 state.magRefDip = state.magCandidateDip;
                 state.magDistDetected = 0u;

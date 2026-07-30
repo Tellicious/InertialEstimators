@@ -182,40 +182,25 @@ void AHRS_PX4_EKF_prediction() {
     /* Body angular rates prediction */
 #if (configAHRS_PX4_EKF_INERTIA_MATRIX == configAHRS_PX4_EKF_USE_COMPLETE_INERTIA_MATRIX)
 
-    float t1 = ELEM(_J, 0, 1) * ELEM(AHRS_EKF_u, 3, 0) + ELEM(_J, 1, 1) * ELEM(AHRS_EKF_u, 4, 0)
-               + ELEM(_J, 1, 2) * ELEM(AHRS_EKF_u, 5, 0);
-    float t2 = ELEM(_J, 0, 0) * ELEM(AHRS_EKF_u, 3, 0) + ELEM(_J, 0, 1) * ELEM(AHRS_EKF_u, 4, 0)
-               + ELEM(_J, 0, 2) * ELEM(AHRS_EKF_u, 5, 0);
-    float t3 = ELEM(_J, 0, 2) * ELEM(AHRS_EKF_u, 3, 0) + ELEM(_J, 1, 2) * ELEM(AHRS_EKF_u, 4, 0)
-               + ELEM(_J, 2, 2) * ELEM(AHRS_EKF_u, 5, 0);
+    float t1 = ELEM(_J, 0, 1) * ELEM(AHRS_EKF_u, 3, 0) + ELEM(_J, 1, 1) * ELEM(AHRS_EKF_u, 4, 0) + ELEM(_J, 1, 2) * ELEM(AHRS_EKF_u, 5, 0);
+    float t2 = ELEM(_J, 0, 0) * ELEM(AHRS_EKF_u, 3, 0) + ELEM(_J, 0, 1) * ELEM(AHRS_EKF_u, 4, 0) + ELEM(_J, 0, 2) * ELEM(AHRS_EKF_u, 5, 0);
+    float t3 = ELEM(_J, 0, 2) * ELEM(AHRS_EKF_u, 3, 0) + ELEM(_J, 1, 2) * ELEM(AHRS_EKF_u, 4, 0) + ELEM(_J, 2, 2) * ELEM(AHRS_EKF_u, 5, 0);
     float tmp1 = ELEM(AHRS_EKF_u, 3, 0) * t1 - ELEM(AHRS_EKF_u, 4, 0) * t2;
     float tmp2 = ELEM(AHRS_EKF_u, 3, 0) * t3 - ELEM(AHRS_EKF_u, 5, 0) * t2;
     float tmp3 = ELEM(AHRS_EKF_u, 4, 0) * t3 - ELEM(AHRS_EKF_u, 5, 0) * t1;
 
-    float wax = ELEM(AHRS_EKF_u, 3, 0)
-                - configAHRS_PX4_EKF_PRED_LOOP_TIME_S
-                      * (ELEM(_Ji, 0, 2) * tmp1 - ELEM(_Ji, 0, 1) * tmp2 + ELEM(_Ji, 0, 0) * tmp3);
-    float way = ELEM(AHRS_EKF_u, 4, 0)
-                - configAHRS_PX4_EKF_PRED_LOOP_TIME_S
-                      * (ELEM(_Ji, 1, 2) * tmp1 - ELEM(_Ji, 1, 1) * tmp2 + ELEM(_Ji, 0, 1) * tmp3);
-    float waz = ELEM(AHRS_EKF_u, 5, 0)
-                - configAHRS_PX4_EKF_PRED_LOOP_TIME_S
-                      * (ELEM(_Ji, 2, 2) * tmp1 - ELEM(_Ji, 1, 2) * tmp2 + ELEM(_Ji, 0, 2) * tmp3);
+    float wax = ELEM(AHRS_EKF_u, 3, 0) - configAHRS_PX4_EKF_PRED_LOOP_TIME_S * (ELEM(_Ji, 0, 2) * tmp1 - ELEM(_Ji, 0, 1) * tmp2 + ELEM(_Ji, 0, 0) * tmp3);
+    float way = ELEM(AHRS_EKF_u, 4, 0) - configAHRS_PX4_EKF_PRED_LOOP_TIME_S * (ELEM(_Ji, 1, 2) * tmp1 - ELEM(_Ji, 1, 1) * tmp2 + ELEM(_Ji, 0, 1) * tmp3);
+    float waz = ELEM(AHRS_EKF_u, 5, 0) - configAHRS_PX4_EKF_PRED_LOOP_TIME_S * (ELEM(_Ji, 2, 2) * tmp1 - ELEM(_Ji, 1, 2) * tmp2 + ELEM(_Ji, 0, 2) * tmp3);
 
 #elif (configAHRS_PX4_EKF_INERTIA_MATRIX == configAHRS_PX4_EKF_USE_DIAGONAL_INERTIA_MATRIX)
 
     float wax = ELEM(AHRS_EKF_u, 3, 0)
-                + (configAHRS_PX4_EKF_PRED_LOOP_TIME_S * ELEM(AHRS_EKF_u, 4, 0) * ELEM(AHRS_EKF_u, 5, 0)
-                   * (ELEM(_J, 1, 1) - ELEM(_J, 2, 2)))
-                      / ELEM(_J, 0, 0);
+                + (configAHRS_PX4_EKF_PRED_LOOP_TIME_S * ELEM(AHRS_EKF_u, 4, 0) * ELEM(AHRS_EKF_u, 5, 0) * (ELEM(_J, 1, 1) - ELEM(_J, 2, 2))) / ELEM(_J, 0, 0);
     float way = ELEM(AHRS_EKF_u, 4, 0)
-                - (configAHRS_PX4_EKF_PRED_LOOP_TIME_S * ELEM(AHRS_EKF_u, 3, 0) * ELEM(AHRS_EKF_u, 5, 0)
-                   * (ELEM(_J, 0, 0) - ELEM(_J, 2, 2)))
-                      / ELEM(_J, 1, 1);
+                - (configAHRS_PX4_EKF_PRED_LOOP_TIME_S * ELEM(AHRS_EKF_u, 3, 0) * ELEM(AHRS_EKF_u, 5, 0) * (ELEM(_J, 0, 0) - ELEM(_J, 2, 2))) / ELEM(_J, 1, 1);
     float waz = ELEM(AHRS_EKF_u, 5, 0)
-                + (configAHRS_PX4_EKF_PRED_LOOP_TIME_S * ELEM(AHRS_EKF_u, 3, 0) * ELEM(AHRS_EKF_u, 4, 0)
-                   * (ELEM(_J, 0, 0) - ELEM(_J, 1, 1)))
-                      / ELEM(_J, 2, 2);
+                + (configAHRS_PX4_EKF_PRED_LOOP_TIME_S * ELEM(AHRS_EKF_u, 3, 0) * ELEM(AHRS_EKF_u, 4, 0) * (ELEM(_J, 0, 0) - ELEM(_J, 1, 1))) / ELEM(_J, 2, 2);
 
 #else
 
@@ -225,26 +210,17 @@ void AHRS_PX4_EKF_prediction() {
 
 #endif
 
-    float delta_u6 =
-        configAHRS_PX4_EKF_PRED_LOOP_TIME_S
-        * (ELEM(AHRS_EKF_u, 2, 0) * ELEM(AHRS_EKF_u, 7, 0) - ELEM(AHRS_EKF_u, 1, 0) * ELEM(AHRS_EKF_u, 8, 0));
+    float delta_u6 = configAHRS_PX4_EKF_PRED_LOOP_TIME_S * (ELEM(AHRS_EKF_u, 2, 0) * ELEM(AHRS_EKF_u, 7, 0) - ELEM(AHRS_EKF_u, 1, 0) * ELEM(AHRS_EKF_u, 8, 0));
 
-    float delta_u7 =
-        configAHRS_PX4_EKF_PRED_LOOP_TIME_S
-        * (ELEM(AHRS_EKF_u, 0, 0) * ELEM(AHRS_EKF_u, 8, 0) - ELEM(AHRS_EKF_u, 2, 0) * ELEM(AHRS_EKF_u, 6, 0));
-    float delta_u8 =
-        configAHRS_PX4_EKF_PRED_LOOP_TIME_S
-        * (ELEM(AHRS_EKF_u, 1, 0) * ELEM(AHRS_EKF_u, 6, 0) - ELEM(AHRS_EKF_u, 0, 0) * ELEM(AHRS_EKF_u, 7, 0));
+    float delta_u7 = configAHRS_PX4_EKF_PRED_LOOP_TIME_S * (ELEM(AHRS_EKF_u, 0, 0) * ELEM(AHRS_EKF_u, 8, 0) - ELEM(AHRS_EKF_u, 2, 0) * ELEM(AHRS_EKF_u, 6, 0));
+    float delta_u8 = configAHRS_PX4_EKF_PRED_LOOP_TIME_S * (ELEM(AHRS_EKF_u, 1, 0) * ELEM(AHRS_EKF_u, 6, 0) - ELEM(AHRS_EKF_u, 0, 0) * ELEM(AHRS_EKF_u, 7, 0));
 
     float delta_u9 =
-        configAHRS_PX4_EKF_PRED_LOOP_TIME_S
-        * (ELEM(AHRS_EKF_u, 2, 0) * ELEM(AHRS_EKF_u, 10, 0) - ELEM(AHRS_EKF_u, 1, 0) * ELEM(AHRS_EKF_u, 11, 0));
+        configAHRS_PX4_EKF_PRED_LOOP_TIME_S * (ELEM(AHRS_EKF_u, 2, 0) * ELEM(AHRS_EKF_u, 10, 0) - ELEM(AHRS_EKF_u, 1, 0) * ELEM(AHRS_EKF_u, 11, 0));
     float delta_u10 =
-        configAHRS_PX4_EKF_PRED_LOOP_TIME_S
-        * (ELEM(AHRS_EKF_u, 0, 0) * ELEM(AHRS_EKF_u, 11, 0) - ELEM(AHRS_EKF_u, 2, 0) * ELEM(AHRS_EKF_u, 9, 0));
+        configAHRS_PX4_EKF_PRED_LOOP_TIME_S * (ELEM(AHRS_EKF_u, 0, 0) * ELEM(AHRS_EKF_u, 11, 0) - ELEM(AHRS_EKF_u, 2, 0) * ELEM(AHRS_EKF_u, 9, 0));
     float delta_u11 =
-        configAHRS_PX4_EKF_PRED_LOOP_TIME_S
-        * (ELEM(AHRS_EKF_u, 1, 0) * ELEM(AHRS_EKF_u, 9, 0) - ELEM(AHRS_EKF_u, 0, 0) * ELEM(AHRS_EKF_u, 10, 0));
+        configAHRS_PX4_EKF_PRED_LOOP_TIME_S * (ELEM(AHRS_EKF_u, 1, 0) * ELEM(AHRS_EKF_u, 9, 0) - ELEM(AHRS_EKF_u, 0, 0) * ELEM(AHRS_EKF_u, 10, 0));
 
     /* Predict state */
     ELEM(AHRS_EKF_u, 0, 0) += configAHRS_PX4_EKF_PRED_LOOP_TIME_S * wax;
@@ -394,9 +370,8 @@ void AHRS_PX4_EKF_updateMag(axis3f_t mag) {
 void AHRS_PX4_EKF_calculateAngles(axis3f_t* angles) {
 
     /* Normalize accelerometer estimate */
-    float inv_norm =
-        INVSQRT(ELEM(AHRS_EKF_u, 6, 0) * ELEM(AHRS_EKF_u, 6, 0) + ELEM(AHRS_EKF_u, 7, 0) * ELEM(AHRS_EKF_u, 7, 0)
-                + ELEM(AHRS_EKF_u, 8, 0) * ELEM(AHRS_EKF_u, 8, 0));
+    float inv_norm = INVSQRT(ELEM(AHRS_EKF_u, 6, 0) * ELEM(AHRS_EKF_u, 6, 0) + ELEM(AHRS_EKF_u, 7, 0) * ELEM(AHRS_EKF_u, 7, 0)
+                             + ELEM(AHRS_EKF_u, 8, 0) * ELEM(AHRS_EKF_u, 8, 0));
     if (isnan(inv_norm) || isinf(inv_norm)) {
         inv_norm = 1.f / constG;
     }
@@ -405,9 +380,8 @@ void AHRS_PX4_EKF_calculateAngles(axis3f_t* angles) {
     float az = ELEM(AHRS_EKF_u, 8, 0) * inv_norm;
 
     /* Normalize magnetometer estimate */
-    inv_norm =
-        INVSQRT(ELEM(AHRS_EKF_u, 9, 0) * ELEM(AHRS_EKF_u, 9, 0) + ELEM(AHRS_EKF_u, 10, 0) * ELEM(AHRS_EKF_u, 10, 0)
-                + ELEM(AHRS_EKF_u, 11, 0) * ELEM(AHRS_EKF_u, 11, 0));
+    inv_norm = INVSQRT(ELEM(AHRS_EKF_u, 9, 0) * ELEM(AHRS_EKF_u, 9, 0) + ELEM(AHRS_EKF_u, 10, 0) * ELEM(AHRS_EKF_u, 10, 0)
+                       + ELEM(AHRS_EKF_u, 11, 0) * ELEM(AHRS_EKF_u, 11, 0));
     if (isnan(inv_norm) || isinf(inv_norm)) {
         inv_norm = 1.f;
     }

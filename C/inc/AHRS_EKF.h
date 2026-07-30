@@ -354,7 +354,7 @@ void AHRS_EKF_setVelNENoise(float vNE);
  * 
  * \param[in]       vD: noise of D-axis velocity measurement
  */
-void AHRS_EKF_setVelDNoise(float vD); 
+void AHRS_EKF_setVelDNoise(float vD);
 
 /**
  * \brief           Retrieve a specific value from the state

@@ -44,7 +44,7 @@ void AHRS_Madgwick_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro, axis3
     q.q1 = 0;
     q.q2 = 0;
     q.q3 = 0;
-    
+
     /* Initial magnetic field estimated direction */
     static float b_x = 1;
     static float b_z = 0;
@@ -159,8 +159,7 @@ void AHRS_Madgwick_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro, axis3
     SEqHatDot_4 = J_14or21 * f_1 + J_11or24 * f_2 - J_44 * f_4 - J_54 * f_5 + J_64 * f_6;
 
     /* normalise the gradient to estimate direction of the gyroscope error */
-    inv_norm = INVSQRT(SEqHatDot_1 * SEqHatDot_1 + SEqHatDot_2 * SEqHatDot_2 + SEqHatDot_3 * SEqHatDot_3
-                       + SEqHatDot_4 * SEqHatDot_4);
+    inv_norm = INVSQRT(SEqHatDot_1 * SEqHatDot_1 + SEqHatDot_2 * SEqHatDot_2 + SEqHatDot_3 * SEqHatDot_3 + SEqHatDot_4 * SEqHatDot_4);
     if (isnan(inv_norm) || isinf(inv_norm)) {
         inv_norm = 1.f;
     }
@@ -208,12 +207,9 @@ void AHRS_Madgwick_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro, axis3
     SEq_2SEq_2 = q.q1 * q.q1;
     SEq_3SEq_3 = q.q2 * q.q2;
     SEq_4SEq_4 = q.q3 * q.q3;
-    h.x = twom_x * (0.5f - SEq_3SEq_3 - SEq_4SEq_4) + twom_y * (SEq_2SEq_3 - SEq_1SEq_4)
-          + twom_z * (SEq_2SEq_4 + SEq_1SEq_3);
-    h.y = twom_x * (SEq_2SEq_3 + SEq_1SEq_4) + twom_y * (0.5f - SEq_2SEq_2 - SEq_4SEq_4)
-          + twom_z * (SEq_3SEq_4 - SEq_1SEq_2);
-    h.z = twom_x * (SEq_2SEq_4 - SEq_1SEq_3) + twom_y * (SEq_3SEq_4 + SEq_1SEq_2)
-          + twom_z * (0.5f - SEq_2SEq_2 - SEq_3SEq_3);
+    h.x = twom_x * (0.5f - SEq_3SEq_3 - SEq_4SEq_4) + twom_y * (SEq_2SEq_3 - SEq_1SEq_4) + twom_z * (SEq_2SEq_4 + SEq_1SEq_3);
+    h.y = twom_x * (SEq_2SEq_3 + SEq_1SEq_4) + twom_y * (0.5f - SEq_2SEq_2 - SEq_4SEq_4) + twom_z * (SEq_3SEq_4 - SEq_1SEq_2);
+    h.z = twom_x * (SEq_2SEq_4 - SEq_1SEq_3) + twom_y * (SEq_3SEq_4 + SEq_1SEq_2) + twom_z * (0.5f - SEq_2SEq_2 - SEq_3SEq_3);
 
     /* Normalize the flux vector to have only components in the x and z */
     b_x = SQRT((h.x * h.x) + (h.y * h.y));

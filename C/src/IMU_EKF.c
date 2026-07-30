@@ -40,15 +40,16 @@
 
 /* Private variables ---------------------------------------------------------*/
 
-static matrix_t IMU_EKF_u; //state vector (Roll=Phi, Pitch=Theta, Xd, Yd, Zd, c_damp, b_az) angles in rad, angular velocities in rad/s, velocities in m/s, c_damp in N*s/m
-static matrix_t _A;        //state matrix
-static matrix_t _B;        //input matrix
-static matrix_t _C;        //output matrix
-static matrix_t _P;        //expected errors value matrix
-static matrix_t _W;        //gyro and acc_z noises covariance matrix (gx, gy, gz, az, c_damp, b_az)
-static matrix_t _R;        //acc_x and acc_y noises covariance matrix
-static matrix_t _M;        //temporary matrix
-static matrix_t _K;        //gain matrix
+static matrix_t
+    IMU_EKF_u; //state vector (Roll=Phi, Pitch=Theta, Xd, Yd, Zd, c_damp, b_az) angles in rad, angular velocities in rad/s, velocities in m/s, c_damp in N*s/m
+static matrix_t _A; //state matrix
+static matrix_t _B; //input matrix
+static matrix_t _C; //output matrix
+static matrix_t _P; //expected errors value matrix
+static matrix_t _W; //gyro and acc_z noises covariance matrix (gx, gy, gz, az, c_damp, b_az)
+static matrix_t _R; //acc_x and acc_y noises covariance matrix
+static matrix_t _M; //temporary matrix
+static matrix_t _K; //gain matrix
 
 /* Support and temporary variables */
 static float _r_vxy, _r_vz, _r_vd; //velocities noise covariances
@@ -202,9 +203,12 @@ void IMU_EKF_prediction(float az, axis3f_t gyro) {
     /* Predict state */
     ELEM(IMU_EKF_u, 0, 0) += configIMU_EKF_LOOP_TIME_S * (gyro.x + tmp1 * tTheta);
     ELEM(IMU_EKF_u, 1, 0) += configIMU_EKF_LOOP_TIME_S * tmp2;
-    delta_u2 = configIMU_EKF_LOOP_TIME_S * (ELEM(IMU_EKF_u, 3, 0) * gyro.z - ELEM(IMU_EKF_u, 4, 0) * gyro.y - ELEM(IMU_EKF_u, 5, 0) * ELEM(IMU_EKF_u, 2, 0) - constG * sTheta);
-    delta_u3 = configIMU_EKF_LOOP_TIME_S * (ELEM(IMU_EKF_u, 4, 0) * gyro.x - ELEM(IMU_EKF_u, 2, 0) * gyro.z - ELEM(IMU_EKF_u, 5, 0) * ELEM(IMU_EKF_u, 3, 0) + constG * sPhi * cTheta);
-    delta_u4 = configIMU_EKF_LOOP_TIME_S * (az - ELEM(IMU_EKF_u, 6, 0) + constG * cPhi * cTheta + gyro.y * ELEM(IMU_EKF_u, 2, 0) - gyro.x * ELEM(IMU_EKF_u, 3, 0));
+    delta_u2 = configIMU_EKF_LOOP_TIME_S
+               * (ELEM(IMU_EKF_u, 3, 0) * gyro.z - ELEM(IMU_EKF_u, 4, 0) * gyro.y - ELEM(IMU_EKF_u, 5, 0) * ELEM(IMU_EKF_u, 2, 0) - constG * sTheta);
+    delta_u3 = configIMU_EKF_LOOP_TIME_S
+               * (ELEM(IMU_EKF_u, 4, 0) * gyro.x - ELEM(IMU_EKF_u, 2, 0) * gyro.z - ELEM(IMU_EKF_u, 5, 0) * ELEM(IMU_EKF_u, 3, 0) + constG * sPhi * cTheta);
+    delta_u4 =
+        configIMU_EKF_LOOP_TIME_S * (az - ELEM(IMU_EKF_u, 6, 0) + constG * cPhi * cTheta + gyro.y * ELEM(IMU_EKF_u, 2, 0) - gyro.x * ELEM(IMU_EKF_u, 3, 0));
     ELEM(IMU_EKF_u, 2, 0) += delta_u2;
     ELEM(IMU_EKF_u, 3, 0) += delta_u3;
     ELEM(IMU_EKF_u, 4, 0) += delta_u4;
