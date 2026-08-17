@@ -39,11 +39,7 @@
 
 /* Functions -----------------------------------------------------------------*/
 void AHRS_Madgwick_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro, axis3f_t mag) { // local system variables
-    static quaternion_t q;
-    q.q0 = 1;
-    q.q1 = 0;
-    q.q2 = 0;
-    q.q3 = 0;
+    static quaternion_t q = {1, 0, 0, 0};                                                  /* persistent attitude state; init once */
 
     /* Initial magnetic field estimated direction */
     static float b_x = 1;
@@ -215,11 +211,20 @@ void AHRS_Madgwick_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro, axis3
     b_x = SQRT((h.x * h.x) + (h.y * h.y));
     b_z = h.z;
 
-    /* Convert quaterionion to Euler angles */
-    /* Switched x and y and changed sign to z to align with current reference system */
-    angles->y = atan2f((2.f * (SEq_3SEq_4 + SEq_1SEq_2)), (SEq_1SEq_1 - SEq_2SEq_2 - SEq_3SEq_3 + SEq_4SEq_4));
-    angles->x = -asinf((2.f * (SEq_2SEq_4 - SEq_1SEq_3)));
-    angles->z = -atan2f((2.f * (SEq_2SEq_3 + SEq_1SEq_4)), (SEq_1SEq_1 + SEq_2SEq_2 - SEq_3SEq_3 - SEq_4SEq_4));
+    /* Rotate estimate from the internal ENU frame to body-NED, then extract Euler.
+     * qP is a 180 deg rotation about (1,1,0)/sqrt(2) and is its own inverse, so
+     * q_ned = qP (x) q (x) qP.
+     * Extract into a scratch quaternion so the persistent internal-frame state q is
+     * left untouched for the next iteration. */
+    quaternion_t qP, qTmp, qNed;
+    qP.q0 = 0.f;
+    qP.q1 = constSQRT1_2;
+    qP.q2 = constSQRT1_2;
+    qP.q3 = 0.f;
+    quaternionMult(&qP, &q, &qTmp);
+    quaternionMult(&qTmp, &qP, &qNed);
+    quaternionNorm(&qNed);
+    quaternionToEuler(&qNed, angles);
 
     return;
 }

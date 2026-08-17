@@ -1,5 +1,10 @@
 # Changelog
 
+## v3.0.1
+
+**Bugfix:**
+- Bugfix to quaternion-based filters
+
 ## v3.0.0
 
 **Breaking changes:**

@@ -41,11 +41,7 @@
 /* Functions -----------------------------------------------------------------*/
 
 void IMU_Madgwick_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro) {
-    static quaternion_t q;
-    q.q0 = 1;
-    q.q1 = 0;
-    q.q2 = 0;
-    q.q3 = 0;
+    static quaternion_t q = {1, 0, 0, 0}; /* persistent attitude state; init once */
 
     float inv_norm; //vector norm
     float SEqDot_omega_1, SEqDot_omega_2, SEqDot_omega_3,
@@ -124,13 +120,20 @@ void IMU_Madgwick_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro) {
     /* Normalise quaternion */
     quaternionNorm(&q);
 
-    /* Convert quaterionion to Euler angles */
-    quaternionToEuler(&q, angles);
-    /* Switched x and y and changed sign to z to align with current reference system */
-    tmp = angles->x;
-    angles->x = angles->y;
-    angles->y = tmp;
-    angles->z *= -1;
+    /* Rotate estimate from the internal ENU frame to body-NED, then extract Euler.
+     * qP is a 180 deg rotation about (1,1,0)/sqrt(2) and is its own inverse, so
+     * q_ned = qP (x) q (x) qP.
+     * Extract into a scratch quaternion so the persistent internal-frame state q is
+     * left untouched for the next iteration. */
+    quaternion_t qP, qTmp, qNed;
+    qP.q0 = 0.f;
+    qP.q1 = constSQRT1_2;
+    qP.q2 = constSQRT1_2;
+    qP.q3 = 0.f;
+    quaternionMult(&qP, &q, &qTmp);
+    quaternionMult(&qTmp, &qP, &qNed);
+    quaternionNorm(&qNed);
+    quaternionToEuler(&qNed, angles);
 
     return;
 }
