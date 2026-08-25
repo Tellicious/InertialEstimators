@@ -32,8 +32,8 @@
 /* END Header */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __ALTITUDEKF_H__
-#define __ALTITUDEKF_H__
+#ifndef ALTITUDEKF_H
+#define ALTITUDEKF_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -112,7 +112,7 @@ extern "C" {
 
 /* Maximum RoC to use LIDAR for correction, in m/s */
 #ifndef configALTITUDE_KF_MAX_LIDAR_ROC
-#define configALTITUDE_KF_MAX_LIDAR_ROC 1.f
+#define configALTITUDE_KF_MAX_LIDAR_ROC 1.0f
 #endif
 
 /* LIDAR derivative filter constant */
@@ -163,9 +163,14 @@ extern "C" {
  * Altitude in m, rate-of-climb in m/s, vertical acceleration in m/s^2, bias of vertical acceleration
  */
 typedef struct {
-    float alt, RoC, vAcc, b_vAcc;
+    float alt;
+    float RoC;
+    float vAcc;
+    float b_vAcc;
     /* Private variables, result of prediction step */
-    float _altPred, _RoCPred, _vAccPred;
+    float _altPred;
+    float _RoCPred;
+    float _vAccPred;
 } altitudeState_t;
 
 /* Function prototypes -------------------------------------------------------*/
@@ -211,10 +216,9 @@ void altitudeKF_updateBaro(altitudeState_t* altState, float press, float dt_s);
  *
  * \param[out]      altState: altitude state object
  * \param[in]       ToFAlt: LIDAR / ToF measured altitude in m
- * \param[in]       angles: current attitude in Euler angles
  * \param[in]       dt_s: update loop time, in s
  */
-void altitudeKF_updateLIDAR(altitudeState_t* altState, float ToFAlt, axis3f_t angles, float dt_s);
+void altitudeKF_updateLIDAR(altitudeState_t* altState, float ToFAlt, float dt_s);
 #endif
 
 #ifdef configALTITUDE_KF_USE_VELD_CORRECTION
@@ -248,4 +252,4 @@ void altitudeKF_reset(altitudeState_t* altState);
 }
 #endif
 
-#endif /* __ALTITUDEKF_H__ */
+#endif /* ALTITUDEKF_H */

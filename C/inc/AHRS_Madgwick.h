@@ -33,8 +33,8 @@
 /* END Header */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __AHRS_MADGWICK_H__
-#define __AHRS_MADGWICK_H__
+#ifndef AHRS_MADGWICK_H
+#define AHRS_MADGWICK_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,8 +42,8 @@ extern "C" {
 /* Includes ------------------------------------------------------------------*/
 
 #include <stdint.h>
+#include "commonTypes.h"
 #include "main.h"
-#include "quaternion.h"
 
 /* Configuration -------------------------------------------------------------*/
 /* Gyroscope supposed measurement error (rad/s) */
@@ -71,4 +71,4 @@ void AHRS_Madgwick_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro, axis3
 }
 #endif
 
-#endif /* __AHRS_MADGWICK_H__ */
+#endif /* AHRS_MADGWICK_H */

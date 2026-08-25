@@ -44,7 +44,9 @@ static matrix_t
     AHRS_EKF_u; //(Roll=Phi, Pitch=Theta, Yaw=Psi, Xd, Yd, Zd, c_damp, b_az, incl, bconstGx, bconstGy, bconstGz) angles in rad, angular velocities in rad/s, velocities in m/s, c_damp in N*s/m
 static matrix_t _A; //state matrix
 static matrix_t _C; // output matrix
-static matrix_t _J, _Ji, _Q;
+static matrix_t _J;
+static matrix_t _Ji;
+static matrix_t _Q;
 static matrix_t _P;      //expected errors value matrix
 static matrix_t _R_acc;  //accelerometer noises covariance matrix
 static matrix_t _R_gyro; //gyroscope noises covariance matrix
@@ -53,10 +55,14 @@ static matrix_t _M;      //temporary matrix
 static matrix_t _K;      //gain matrix
 
 /* Support and temporary variables */
-static matrix_t TMP1, TMP2, TMP3, TMP4, TMP5;
+static matrix_t TMP1;
+static matrix_t TMP2;
+static matrix_t TMP3;
+static matrix_t TMP4;
+static matrix_t TMP5;
 
 /* Functions -----------------------------------------------------------------*/
-void AHRS_PX4_EKF_init() {
+void AHRS_PX4_EKF_init(void) {
 
     /* Initialize matrices */
     matrixInit(&AHRS_EKF_u, 12, 1);
@@ -110,7 +116,7 @@ void AHRS_PX4_EKF_init() {
     return;
 }
 
-void AHRS_PX4_EKF_prediction() {
+void AHRS_PX4_EKF_prediction(void) {
     /*
      wx=  u(0);   % x  body angular rate
      wy=  u(1);   % y  body angular rate
@@ -132,45 +138,45 @@ void AHRS_PX4_EKF_prediction() {
     float w2 = configAHRS_PX4_EKF_PRED_LOOP_TIME_S * ELEM(AHRS_EKF_u, 1, 0);
     float w3 = configAHRS_PX4_EKF_PRED_LOOP_TIME_S * ELEM(AHRS_EKF_u, 2, 0);
     /* A matrix */
-    ELEM(_A, 0, 0) = 1.f;
+    ELEM(_A, 0, 0) = 1.0f;
     ELEM(_A, 0, 3) = configAHRS_PX4_EKF_PRED_LOOP_TIME_S;
-    ELEM(_A, 1, 1) = 1.f;
+    ELEM(_A, 1, 1) = 1.0f;
     ELEM(_A, 1, 4) = configAHRS_PX4_EKF_PRED_LOOP_TIME_S;
-    ELEM(_A, 2, 2) = 1.f;
+    ELEM(_A, 2, 2) = 1.0f;
     ELEM(_A, 2, 5) = configAHRS_PX4_EKF_PRED_LOOP_TIME_S;
-    ELEM(_A, 3, 3) = 1.f;
-    ELEM(_A, 4, 4) = 1.f;
-    ELEM(_A, 5, 5) = 1.f;
+    ELEM(_A, 3, 3) = 1.0f;
+    ELEM(_A, 4, 4) = 1.0f;
+    ELEM(_A, 5, 5) = 1.0f;
     ELEM(_A, 6, 1) = -configAHRS_PX4_EKF_PRED_LOOP_TIME_S * ELEM(AHRS_EKF_u, 8, 0);
     ELEM(_A, 6, 2) = configAHRS_PX4_EKF_PRED_LOOP_TIME_S * ELEM(AHRS_EKF_u, 7, 0);
-    ELEM(_A, 6, 6) = 1.f;
+    ELEM(_A, 6, 6) = 1.0f;
     ELEM(_A, 6, 7) = w3;
     ELEM(_A, 6, 8) = -w2;
     ELEM(_A, 7, 0) = configAHRS_PX4_EKF_PRED_LOOP_TIME_S * ELEM(AHRS_EKF_u, 8, 0);
     ELEM(_A, 7, 2) = -configAHRS_PX4_EKF_PRED_LOOP_TIME_S * ELEM(AHRS_EKF_u, 6, 0);
     ELEM(_A, 7, 6) = -w3;
-    ELEM(_A, 7, 7) = 1.f;
+    ELEM(_A, 7, 7) = 1.0f;
     ELEM(_A, 7, 8) = w1;
     ELEM(_A, 8, 0) = -configAHRS_PX4_EKF_PRED_LOOP_TIME_S * ELEM(AHRS_EKF_u, 7, 0);
     ELEM(_A, 8, 1) = configAHRS_PX4_EKF_PRED_LOOP_TIME_S * ELEM(AHRS_EKF_u, 6, 0);
     ELEM(_A, 8, 6) = w2;
     ELEM(_A, 8, 7) = -w1;
-    ELEM(_A, 8, 8) = 1.f;
+    ELEM(_A, 8, 8) = 1.0f;
     ELEM(_A, 9, 1) = -configAHRS_PX4_EKF_PRED_LOOP_TIME_S * ELEM(AHRS_EKF_u, 11, 0);
     ELEM(_A, 9, 2) = configAHRS_PX4_EKF_PRED_LOOP_TIME_S * ELEM(AHRS_EKF_u, 10, 0);
-    ELEM(_A, 9, 9) = 1.f;
+    ELEM(_A, 9, 9) = 1.0f;
     ELEM(_A, 9, 10) = w3;
     ELEM(_A, 9, 11) = -w2;
     ELEM(_A, 10, 0) = configAHRS_PX4_EKF_PRED_LOOP_TIME_S * ELEM(AHRS_EKF_u, 11, 0);
     ELEM(_A, 10, 2) = -configAHRS_PX4_EKF_PRED_LOOP_TIME_S * ELEM(AHRS_EKF_u, 9, 0);
     ELEM(_A, 10, 9) = -w3;
-    ELEM(_A, 10, 10) = 1.f;
+    ELEM(_A, 10, 10) = 1.0f;
     ELEM(_A, 10, 11) = w1;
     ELEM(_A, 11, 0) = -configAHRS_PX4_EKF_PRED_LOOP_TIME_S * ELEM(AHRS_EKF_u, 10, 0);
     ELEM(_A, 11, 1) = configAHRS_PX4_EKF_PRED_LOOP_TIME_S * ELEM(AHRS_EKF_u, 9, 0);
     ELEM(_A, 11, 9) = w2;
     ELEM(_A, 11, 10) = -w1;
-    ELEM(_A, 11, 11) = 1.f;
+    ELEM(_A, 11, 11) = 1.0f;
 
     /* Predicted P matrix */
     QuadProd(&_A, &_P, &TMP4);
@@ -246,9 +252,9 @@ void AHRS_PX4_EKF_updateGyro(axis3f_t gyro) {
 
     /* C matrix */
     matrixZeros(&_C);
-    ELEM(_C, 0, 0) = 1.f;
-    ELEM(_C, 1, 1) = 1.f;
-    ELEM(_C, 2, 2) = 1.f;
+    ELEM(_C, 0, 0) = 1.0f;
+    ELEM(_C, 1, 1) = 1.0f;
+    ELEM(_C, 2, 2) = 1.0f;
 
     /* Delta measures */
     ELEM(deltaM, 0, 0) = gyro.x - ELEM(AHRS_EKF_u, 0, 0);
@@ -288,9 +294,9 @@ void AHRS_PX4_EKF_updateAccel(axis3f_t accel) {
 
     /* C matrix */
     matrixZeros(&_C);
-    ELEM(_C, 0, 6) = 1.f;
-    ELEM(_C, 1, 7) = 1.f;
-    ELEM(_C, 2, 8) = 1.f;
+    ELEM(_C, 0, 6) = 1.0f;
+    ELEM(_C, 1, 7) = 1.0f;
+    ELEM(_C, 2, 8) = 1.0f;
 
     /* Delta measures */
     ELEM(deltaM, 0, 0) = accel.x - ELEM(AHRS_EKF_u, 6, 0);
@@ -331,9 +337,9 @@ void AHRS_PX4_EKF_updateMag(axis3f_t mag) {
 
     /* C matrix */
     matrixZeros(&_C);
-    ELEM(_C, 0, 9) = 1.f;
-    ELEM(_C, 1, 10) = 1.f;
-    ELEM(_C, 2, 11) = 1.f;
+    ELEM(_C, 0, 9) = 1.0f;
+    ELEM(_C, 1, 10) = 1.0f;
+    ELEM(_C, 2, 11) = 1.0f;
 
     /* Delta measures */
     ELEM(deltaM, 0, 0) = mag.x - ELEM(AHRS_EKF_u, 9, 0);
@@ -373,7 +379,7 @@ void AHRS_PX4_EKF_calculateAngles(axis3f_t* angles) {
     float inv_norm = INVSQRT(ELEM(AHRS_EKF_u, 6, 0) * ELEM(AHRS_EKF_u, 6, 0) + ELEM(AHRS_EKF_u, 7, 0) * ELEM(AHRS_EKF_u, 7, 0)
                              + ELEM(AHRS_EKF_u, 8, 0) * ELEM(AHRS_EKF_u, 8, 0));
     if (isnan(inv_norm) || isinf(inv_norm)) {
-        inv_norm = 1.f / constG;
+        inv_norm = 1.0f / constG;
     }
     float ax = ELEM(AHRS_EKF_u, 6, 0) * inv_norm;
     float ay = ELEM(AHRS_EKF_u, 7, 0) * inv_norm;
@@ -383,7 +389,7 @@ void AHRS_PX4_EKF_calculateAngles(axis3f_t* angles) {
     inv_norm = INVSQRT(ELEM(AHRS_EKF_u, 9, 0) * ELEM(AHRS_EKF_u, 9, 0) + ELEM(AHRS_EKF_u, 10, 0) * ELEM(AHRS_EKF_u, 10, 0)
                        + ELEM(AHRS_EKF_u, 11, 0) * ELEM(AHRS_EKF_u, 11, 0));
     if (isnan(inv_norm) || isinf(inv_norm)) {
-        inv_norm = 1.f;
+        inv_norm = 1.0f;
     }
     float mx = ELEM(AHRS_EKF_u, 9, 0) * inv_norm;
     float my = ELEM(AHRS_EKF_u, 10, 0) * inv_norm;
@@ -396,8 +402,8 @@ void AHRS_PX4_EKF_calculateAngles(axis3f_t* angles) {
     float cPhi = COS(angles->x);
     float sTheta = ax;
     float cTheta = COS(angles->y);
-    float Yh = my * cPhi - mz * sPhi;
-    float Xh = mx * cTheta + (my * sPhi + mz * cPhi) * sTheta;
+    float Yh = (my * cPhi) - (mz * sPhi);
+    float Xh = (mx * cTheta) + (((my * sPhi) + (mz * cPhi)) * sTheta);
     angles->z = atan2f(-Yh, Xh);
 
     return;
@@ -435,7 +441,7 @@ void AHRS_Attitude_PX4_EKF_setProcessNoise(float rot_sp, float rot_acc, float ac
 //------------------------------------Set gyro noises----------------------------------------//
 void AHRS_Attitude_PX4_EKF_setGyroNoise(float g) {
 
-    float inv_loop_time = 1.f / configAHRS_PX4_EKF_GYRO_LOOP_TIME_S;
+    float inv_loop_time = 1.0f / configAHRS_PX4_EKF_GYRO_LOOP_TIME_S;
     ELEM(_R_gyro, 0, 0) = g * inv_loop_time;
     ELEM(_R_gyro, 1, 1) = g * inv_loop_time;
     ELEM(_R_gyro, 2, 2) = g * inv_loop_time;
@@ -446,7 +452,7 @@ void AHRS_Attitude_PX4_EKF_setGyroNoise(float g) {
 //-------------------------------------Set acc noises----------------------------------------//
 void AHRS_Attitude_PX4_EKF_setAccelNoise(float a) {
 
-    float inv_loop_time = 1.f / configAHRS_PX4_EKF_ACC_LOOP_TIME_S;
+    float inv_loop_time = 1.0f / configAHRS_PX4_EKF_ACC_LOOP_TIME_S;
     ELEM(_R_acc, 0, 0) = a * inv_loop_time;
     ELEM(_R_acc, 1, 1) = a * inv_loop_time;
     ELEM(_R_acc, 2, 2) = a * inv_loop_time;
@@ -457,7 +463,7 @@ void AHRS_Attitude_PX4_EKF_setAccelNoise(float a) {
 //-------------------------------------Set mag noises----------------------------------------//
 void AHRS_Attitude_PX4_EKF_setMagNoise(float m) {
 
-    float inv_loop_time = 1.f / configAHRS_PX4_EKF_MAG_LOOP_TIME_S;
+    float inv_loop_time = 1.0f / (float)configAHRS_PX4_EKF_MAG_LOOP_TIME_S;
     ELEM(_R_mag, 0, 0) = m * inv_loop_time;
     ELEM(_R_mag, 1, 1) = m * inv_loop_time;
     ELEM(_R_mag, 2, 2) = m * inv_loop_time;

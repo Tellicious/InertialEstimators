@@ -32,8 +32,8 @@
 /* END Header */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __AHRS_PX4_EKF_H__
-#define __AHRS_PX4_EKF_H__
+#ifndef AHRS_PX4_EKF_H
+#define AHRS_PX4_EKF_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -63,7 +63,7 @@ extern "C" {
 
 /* Magnetic field process noise */
 #ifndef configAHRS_PX4_EKF_M_NOISE
-#define configAHRS_PX4_EKF_M_NOISE 1.f
+#define configAHRS_PX4_EKF_M_NOISE 1.0f
 #endif
 
 /* Gyroscope noise */
@@ -120,12 +120,12 @@ extern "C" {
 /**
  * \brief           AHRS PX4 EKF filter initialization
  */
-void AHRS_PX4_EKF_init();
+void AHRS_PX4_EKF_init(void);
 
 /**
  * \brief           Predict EKF state at current step
  */
-void AHRS_PX4_EKF_prediction();
+void AHRS_PX4_EKF_prediction(void);
 
 /**
  * \brief           Update EKF with gyro readings
@@ -197,4 +197,4 @@ void AHRS_Attitude_PX4_EKF_setMagNoise(float m);
 }
 #endif
 
-#endif /* __AHRS_PX4_EKF_H__ */
+#endif /* AHRS_PX4_EKF_H */

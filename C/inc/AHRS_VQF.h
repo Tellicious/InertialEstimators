@@ -32,8 +32,8 @@
 /* END Header */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __AHRS_VQF_H__
-#define __AHRS_VQF_H__
+#ifndef AHRS_VQF_H
+#define AHRS_VQF_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -69,19 +69,19 @@ extern "C" {
 /**
  * \brief           Initialize a VQF instance
  */
-void AHRS_VQF_Init();
+void AHRS_VQF_Init(void);
 
 /**
  * \brief           Deinitialize a VQF instance
  *
  * Frees all dynamically allocated matrices belonging to the instance
  */
-void AHRS_VQF_Deinit();
+void AHRS_VQF_Deinit(void);
 
 /**
  * \brief           Reset the VQF state (keeps current parameters and coefficients)
  */
-void AHRS_VQF_Reset();
+void AHRS_VQF_Reset(void);
 
 /**
  * \brief           Update the 3D (gyro-only) part of the filter
@@ -138,7 +138,7 @@ void AHRS_VQF_Get9D(axis3f_t* angles);
  *
  * \return          Yaw correction delta [rad]
  */
-float AHRS_VQF_GetDelta();
+float AHRS_VQF_GetDelta(void);
 
 /**
  * \brief           Get current gyro bias estimate
@@ -165,7 +165,7 @@ void AHRS_VQF_SetBiasEstimate(axis3f_t bias, float sigma);
  *
  * \return          1 if rest detected, otherwise 0
  */
-uint8_t AHRS_VQF_GetRestDetected();
+uint8_t AHRS_VQF_GetRestDetected(void);
 
 /**
  * \brief           Return magnetic disturbance detection flag
@@ -173,7 +173,7 @@ uint8_t AHRS_VQF_GetRestDetected();
  *
  * \return          1 if magnetic disturbance detected, otherwise 0
  */
-uint8_t AHRS_VQF_GetMagDistDetected();
+uint8_t AHRS_VQF_GetMagDistDetected(void);
 
 /**
  * \brief           Set magnetic reference norm and dip
@@ -187,4 +187,4 @@ void AHRS_VQF_SetMagRef(float norm, float dip_rad);
 }
 #endif
 
-#endif /* __AHRS_VQF_H__ */
+#endif /* AHRS_VQF_H */

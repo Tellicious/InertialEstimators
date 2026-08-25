@@ -33,8 +33,8 @@
 /* END Header */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __AHRS_PX4_SO3_H__
-#define __AHRS_PX4_SO3_H__
+#ifndef AHRS_PX4_SO3_H
+#define AHRS_PX4_SO3_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -47,7 +47,7 @@ extern "C" {
 
 /* Configuration -------------------------------------------------------------*/
 /* Default Kp value */
-#define configAHRS_PX4_SO3_KP 1
+#define configAHRS_PX4_SO3_KP 1.0f
 /* Default Ki value */
 #define configAHRS_PX4_SO3_KI 0.05f
 
@@ -83,4 +83,4 @@ void AHRS_PX4_S03_reset(axis3f_t* angles, float phi0, float theta0, float psi0);
 }
 #endif
 
-#endif /* __AHRS_PX4_SO3_H__ */
+#endif /* AHRS_PX4_SO3_H */

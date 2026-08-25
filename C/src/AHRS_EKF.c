@@ -54,8 +54,15 @@ static matrix_t _M;     //temporary matrix
 static matrix_t _K;     //gain matrix
 
 /* Support and temporary variables */
-static float _r_vxy, _r_vz, _r_vne, _r_vd; //velocities noise covariances
-static matrix_t TMP1, TMP2, TMP3, TMP4, TMP5;
+static float _r_vxy;
+static float _r_vz;
+static float _r_vne;
+static float _r_vd; //velocities noise covariances
+static matrix_t TMP1;
+static matrix_t TMP2;
+static matrix_t TMP3;
+static matrix_t TMP4;
+static matrix_t TMP5;
 
 /* Private functions ---------------------------------------------------------*/
 
@@ -84,22 +91,22 @@ static void AHRS_EKF_seedCovariance(void) {
 void AHRS_EKF_init(axis3f_t* angles, axis3f_t* velocities) {
 
     /* Initialize matrices */
-    matrixInit(&AHRS_EKF_u, AHRS_EKF_STATE_SIZE, 1);
-    matrixInit(&_A, AHRS_EKF_STATE_SIZE, AHRS_EKF_STATE_SIZE);
-    matrixInit(&_B, AHRS_EKF_STATE_SIZE, 10);
-    matrixInit(&_C_acc, 2, AHRS_EKF_STATE_SIZE);
-    matrixInit(&_C_mag, 3, AHRS_EKF_STATE_SIZE);
-    matrixInit(&_P, AHRS_EKF_STATE_SIZE, AHRS_EKF_STATE_SIZE);
-    matrixInit(&_W, 10, 10);
-    matrixInit(&_R_acc, 2, 2);
-    matrixInit(&_R_mag, 3, 3);
-    matrixInit(&_M, 2, 2);
-    matrixInit(&_K, AHRS_EKF_STATE_SIZE, 2);
-    matrixInit(&TMP1, AHRS_EKF_STATE_SIZE, 2);
-    matrixInit(&TMP2, 2, 2);
-    matrixInit(&TMP3, AHRS_EKF_STATE_SIZE, 1);
-    matrixInit(&TMP4, AHRS_EKF_STATE_SIZE, AHRS_EKF_STATE_SIZE);
-    matrixInit(&TMP5, AHRS_EKF_STATE_SIZE, AHRS_EKF_STATE_SIZE);
+    (void)matrixInit(&AHRS_EKF_u, AHRS_EKF_STATE_SIZE, 1);
+    (void)matrixInit(&_A, AHRS_EKF_STATE_SIZE, AHRS_EKF_STATE_SIZE);
+    (void)matrixInit(&_B, AHRS_EKF_STATE_SIZE, 10);
+    (void)matrixInit(&_C_acc, 2, AHRS_EKF_STATE_SIZE);
+    (void)matrixInit(&_C_mag, 3, AHRS_EKF_STATE_SIZE);
+    (void)matrixInit(&_P, AHRS_EKF_STATE_SIZE, AHRS_EKF_STATE_SIZE);
+    (void)matrixInit(&_W, 10, 10);
+    (void)matrixInit(&_R_acc, 2, 2);
+    (void)matrixInit(&_R_mag, 3, 3);
+    (void)matrixInit(&_M, 2, 2);
+    (void)matrixInit(&_K, AHRS_EKF_STATE_SIZE, 2);
+    (void)matrixInit(&TMP1, AHRS_EKF_STATE_SIZE, 2);
+    (void)matrixInit(&TMP2, 2, 2);
+    (void)matrixInit(&TMP3, AHRS_EKF_STATE_SIZE, 1);
+    (void)matrixInit(&TMP4, AHRS_EKF_STATE_SIZE, AHRS_EKF_STATE_SIZE);
+    (void)matrixInit(&TMP5, AHRS_EKF_STATE_SIZE, AHRS_EKF_STATE_SIZE);
 
     ELEM(AHRS_EKF_u, 0, 0) = configAHRS_EKF_PHI0;
     ELEM(AHRS_EKF_u, 1, 0) = configAHRS_EKF_THETA0;
@@ -135,7 +142,7 @@ void AHRS_EKF_init(axis3f_t* angles, axis3f_t* velocities) {
     angles->x = ELEM(AHRS_EKF_u, 0, 0);                    //u(0,0) is roll according to IMU ref. frame
     angles->y = ELEM(AHRS_EKF_u, 1, 0);                    //u(1,0) is pitch according to IMU ref. frame
     angles->z = fmodf(ELEM(AHRS_EKF_u, 2, 0), constTWOPI); //u(2,0) is yaw according to IMU ref. frame
-    if (angles->z < 0) {
+    if (angles->z < 0.0f) {
         angles->z += constTWOPI;
     }
 
@@ -164,8 +171,8 @@ void AHRS_EKF_prediction(float az, axis3f_t gyro) {
     float pr = gyro.x - ELEM(AHRS_EKF_u, 9, 0);
     float qr = gyro.y - ELEM(AHRS_EKF_u, 10, 0);
     float rr = gyro.z - ELEM(AHRS_EKF_u, 11, 0);
-    float tmp1 = sPhi * qr + cPhi * rr;
-    float tmp2 = cPhi * qr - sPhi * rr;
+    float tmp1 = (sPhi * qr) + (cPhi * rr);
+    float tmp2 = (cPhi * qr) - (sPhi * rr);
 
     /* Clamp c_damp to avoid instability */
     ELEM(AHRS_EKF_u, 6, 0) = CONSTRAIN(ELEM(AHRS_EKF_u, 6, 0), configAHRS_EKF_C_DAMP_MIN, configAHRS_EKF_C_DAMP_MAX);
@@ -250,15 +257,15 @@ void AHRS_EKF_prediction(float az, axis3f_t gyro) {
     matrixAdd(&TMP4, &_P, &_P);
 
     /* Predict state */
-    ELEM(AHRS_EKF_u, 0, 0) += configAHRS_EKF_LOOP_TIME_S * (pr + tmp1 * tTheta);
+    ELEM(AHRS_EKF_u, 0, 0) += configAHRS_EKF_LOOP_TIME_S * (pr + (tmp1 * tTheta));
     ELEM(AHRS_EKF_u, 1, 0) += configAHRS_EKF_LOOP_TIME_S * tmp2;
     ELEM(AHRS_EKF_u, 2, 0) += configAHRS_EKF_LOOP_TIME_S * tmp1 * inv_cTheta;
     float delta_u3 = configAHRS_EKF_LOOP_TIME_S
-                     * (ELEM(AHRS_EKF_u, 4, 0) * rr - ELEM(AHRS_EKF_u, 5, 0) * qr - ELEM(AHRS_EKF_u, 6, 0) * ELEM(AHRS_EKF_u, 3, 0) - constG * sTheta);
+                     * ((ELEM(AHRS_EKF_u, 4, 0) * rr) - (ELEM(AHRS_EKF_u, 5, 0) * qr) - (ELEM(AHRS_EKF_u, 6, 0) * ELEM(AHRS_EKF_u, 3, 0)) - (constG * sTheta));
     float delta_u4 = configAHRS_EKF_LOOP_TIME_S
-                     * (ELEM(AHRS_EKF_u, 5, 0) * pr - ELEM(AHRS_EKF_u, 3, 0) * rr - ELEM(AHRS_EKF_u, 6, 0) * ELEM(AHRS_EKF_u, 4, 0) + constG * sPhi * cTheta);
+                     * ((ELEM(AHRS_EKF_u, 5, 0) * pr) - (ELEM(AHRS_EKF_u, 3, 0) * rr) - (ELEM(AHRS_EKF_u, 6, 0) * ELEM(AHRS_EKF_u, 4, 0)) + (constG * sPhi * cTheta));
     float delta_u5 =
-        configAHRS_EKF_LOOP_TIME_S * (az - ELEM(AHRS_EKF_u, 7, 0) + constG * cPhi * cTheta + qr * ELEM(AHRS_EKF_u, 3, 0) - pr * ELEM(AHRS_EKF_u, 4, 0));
+        configAHRS_EKF_LOOP_TIME_S * (az - ELEM(AHRS_EKF_u, 7, 0) + (constG * cPhi * cTheta) + (qr * ELEM(AHRS_EKF_u, 3, 0)) - (pr * ELEM(AHRS_EKF_u, 4, 0)));
     ELEM(AHRS_EKF_u, 3, 0) += delta_u3;
     ELEM(AHRS_EKF_u, 4, 0) += delta_u4;
     ELEM(AHRS_EKF_u, 5, 0) += delta_u5;
@@ -275,7 +282,7 @@ void AHRS_EKF_prediction(float az, axis3f_t gyro) {
 /*---------------------------------Update with accel---------------------------------------*/
 void AHRS_EKF_updateAccel(axis3f_t* angles, axis3f_t* velocities, axis3f_t accel) {
     matrix_t deltaM;
-    matrixInit(&deltaM, 2, 1);
+    (void)matrixInit(&deltaM, 2, 1);
 
     /* C matrix */
     //_C.zeros(); //zeros or not?
@@ -294,7 +301,7 @@ void AHRS_EKF_updateAccel(axis3f_t* angles, axis3f_t* velocities, axis3f_t accel
     matrixAdd(&_M, &_R_acc, &_M);
     //_K = _P * (~_C) * (!_M);
     matrixMult_rhsT(&_P, &_C_acc, &TMP1); //TMP1 contains _P * (~_C)
-    matrixInversed(&_M, &TMP2);           //TMP2 contains (!_M)
+    (void)matrixInversed(&_M, &TMP2);           //TMP2 contains (!_M)
     matrixMult(&TMP1, &TMP2, &_K);
 
     /* Correct state vector */
@@ -314,7 +321,7 @@ void AHRS_EKF_updateAccel(axis3f_t* angles, axis3f_t* velocities, axis3f_t accel
     angles->x = ELEM(AHRS_EKF_u, 0, 0);                    //u(0,0) is roll according to IMU ref. frame
     angles->y = ELEM(AHRS_EKF_u, 1, 0);                    //u(1,0) is pitch according to IMU ref. frame
     angles->z = fmodf(ELEM(AHRS_EKF_u, 2, 0), constTWOPI); //u(2,0) is yaw according to IMU ref. frame
-    if (angles->z < 0) {
+    if (angles->z < 0.0f) {
         angles->z += constTWOPI;
     }
 
@@ -323,13 +330,17 @@ void AHRS_EKF_updateAccel(axis3f_t* angles, axis3f_t* velocities, axis3f_t accel
     velocities->y = ELEM(AHRS_EKF_u, 4, 0); //u(4,0) is speed along local y axis according to IMU ref. frame
     velocities->z = ELEM(AHRS_EKF_u, 5, 0); //u(5,0) is speed along local z axis according to IMU ref. frame
 
-    matrixDelete(&deltaM);
+    (void)matrixDelete(&deltaM);
     return;
 }
 
 //-----------------------------------Update with mag-----------------------------------------//
 void AHRS_EKF_updateMag(axis3f_t* angles, axis3f_t* velocities, axis3f_t mag) {
-    matrix_t deltaM, M_mag, TMP1_mag, TMP2_mag, K_mag;
+    matrix_t deltaM;
+    matrix_t M_mag;
+    matrix_t TMP1_mag;
+    matrix_t TMP2_mag;
+    matrix_t K_mag;
 
     /* Discard the reading if it is not usable */
     float norm2 = (mag.x * mag.x) + (mag.y * mag.y) + (mag.z * mag.z);
@@ -338,7 +349,7 @@ void AHRS_EKF_updateMag(axis3f_t* angles, axis3f_t* velocities, axis3f_t mag) {
         angles->x = ELEM(AHRS_EKF_u, 0, 0);                    //u(0,0) is roll according to IMU ref. frame
         angles->y = ELEM(AHRS_EKF_u, 1, 0);                    //u(1,0) is pitch according to IMU ref. frame
         angles->z = fmodf(ELEM(AHRS_EKF_u, 2, 0), constTWOPI); //u(2,0) is yaw according to IMU ref. frame
-        if (angles->z < 0) {
+        if (angles->z < 0.0f) {
             angles->z += constTWOPI;
         }
 
@@ -350,11 +361,11 @@ void AHRS_EKF_updateMag(axis3f_t* angles, axis3f_t* velocities, axis3f_t mag) {
         return;
     }
 
-    matrixInit(&deltaM, 3, 1);
-    matrixInit(&M_mag, 3, 3);
-    matrixInit(&TMP1_mag, AHRS_EKF_STATE_SIZE, 3);
-    matrixInit(&TMP2_mag, 3, 3);
-    matrixInit(&K_mag, AHRS_EKF_STATE_SIZE, 3);
+    (void)matrixInit(&deltaM, 3, 1);
+    (void)matrixInit(&M_mag, 3, 3);
+    (void)matrixInit(&TMP1_mag, AHRS_EKF_STATE_SIZE, 3);
+    (void)matrixInit(&TMP2_mag, 3, 3);
+    (void)matrixInit(&K_mag, AHRS_EKF_STATE_SIZE, 3);
 
     /* Normalize readings */
     float invNorm = INVSQRT(norm2);
@@ -374,22 +385,22 @@ void AHRS_EKF_updateMag(axis3f_t* angles, axis3f_t* velocities, axis3f_t mag) {
 
     /* C matrix */
     //_C_mag.zeros(); //zeros or not?
-    float tmp1 = cPhi * sPsi - cPsi * sPhi * sTheta;
-    ELEM(_C_mag, 0, 1) = -sInc * cTheta - cInc * cPsi * sTheta;
+    float tmp1 = (cPhi * sPsi) - (cPsi * sPhi * sTheta);
+    ELEM(_C_mag, 0, 1) = (-sInc * cTheta) - (cInc * cPsi * sTheta);
     ELEM(_C_mag, 0, 2) = -cInc * cTheta * sPsi;
-    ELEM(_C_mag, 0, 8) = -cInc * sTheta - cPsi * cTheta * sInc;
-    ELEM(_C_mag, 1, 0) = cInc * (sPhi * sPsi + cPhi * cPsi * sTheta) + cPhi * sInc * cTheta;
-    ELEM(_C_mag, 1, 1) = cInc * cPsi * cTheta * sPhi - sInc * sPhi * sTheta;
-    ELEM(_C_mag, 1, 2) = -cInc * (cPhi * cPsi + sPhi * sPsi * sTheta);
-    ELEM(_C_mag, 1, 8) = sInc * tmp1 + cInc * cTheta * sPhi;
-    ELEM(_C_mag, 2, 0) = cInc * tmp1 - sInc * cTheta * sPhi;
-    ELEM(_C_mag, 2, 1) = cInc * cPhi * cPsi * cTheta - cPhi * sInc * sTheta;
-    ELEM(_C_mag, 2, 2) = cInc * (cPsi * sPhi - cPhi * sPsi * sTheta);
-    ELEM(_C_mag, 2, 8) = cInc * cPhi * cTheta - sInc * (sPhi * sPsi + cPhi * cPsi * sTheta);
+    ELEM(_C_mag, 0, 8) = (-cInc * sTheta) - (cPsi * cTheta * sInc);
+    ELEM(_C_mag, 1, 0) = (cInc * ((sPhi * sPsi) + (cPhi * cPsi * sTheta))) + (cPhi * sInc * cTheta);
+    ELEM(_C_mag, 1, 1) = (cInc * cPsi * cTheta * sPhi) - (sInc * sPhi * sTheta);
+    ELEM(_C_mag, 1, 2) = -cInc * ((cPhi * cPsi) + (sPhi * sPsi * sTheta));
+    ELEM(_C_mag, 1, 8) = (sInc * tmp1) + (cInc * cTheta * sPhi);
+    ELEM(_C_mag, 2, 0) = (cInc * tmp1) - (sInc * cTheta * sPhi);
+    ELEM(_C_mag, 2, 1) = (cInc * cPhi * cPsi * cTheta) - (cPhi * sInc * sTheta);
+    ELEM(_C_mag, 2, 2) = cInc * ((cPsi * sPhi) - (cPhi * sPsi * sTheta));
+    ELEM(_C_mag, 2, 8) = (cInc * cPhi * cTheta) - (sInc * ((sPhi * sPsi) + (cPhi * cPsi * sTheta)));
 
-    ELEM(deltaM, 0, 0) = mag.x - (cInc * cPsi * cTheta - sInc * sTheta);
-    ELEM(deltaM, 1, 0) = mag.y - (sInc * cTheta * sPhi - cInc * tmp1);
-    ELEM(deltaM, 2, 0) = mag.z - (cInc * (sPhi * sPsi + cPhi * cPsi * sTheta) + cPhi * sInc * cTheta);
+    ELEM(deltaM, 0, 0) = mag.x - ((cInc * cPsi * cTheta) - (sInc * sTheta));
+    ELEM(deltaM, 1, 0) = mag.y - ((sInc * cTheta * sPhi) - (cInc * tmp1));
+    ELEM(deltaM, 2, 0) = mag.z - ((cInc * ((sPhi * sPsi) + (cPhi * cPsi * sTheta))) + (cPhi * sInc * cTheta));
 
     /* Gain matrix K */
     //_M = QuadProd(_C, _P) + _R;
@@ -397,7 +408,7 @@ void AHRS_EKF_updateMag(axis3f_t* angles, axis3f_t* velocities, axis3f_t mag) {
     matrixAdd(&M_mag, &_R_mag, &M_mag);
     //_K = _P * (~_C) * (!_M);
     matrixMult_rhsT(&_P, &_C_mag, &TMP1_mag); //TMP1 contains _P * (~_C)
-    matrixInversed(&M_mag, &TMP2_mag);        //TMP2 contains (!_M)
+    (void)matrixInversed(&M_mag, &TMP2_mag);        //TMP2 contains (!_M)
     matrixMult(&TMP1_mag, &TMP2_mag, &K_mag);
 
     /* Correct state vector */
@@ -417,7 +428,7 @@ void AHRS_EKF_updateMag(axis3f_t* angles, axis3f_t* velocities, axis3f_t mag) {
     angles->x = ELEM(AHRS_EKF_u, 0, 0);                    //u(0,0) is roll according to IMU ref. frame
     angles->y = ELEM(AHRS_EKF_u, 1, 0);                    //u(1,0) is pitch according to IMU ref. frame
     angles->z = fmodf(ELEM(AHRS_EKF_u, 2, 0), constTWOPI); //u(2,0) is yaw according to IMU ref. frame
-    if (angles->z < 0) {
+    if (angles->z < 0.0f) {
         angles->z += constTWOPI;
     }
 
@@ -426,29 +437,31 @@ void AHRS_EKF_updateMag(axis3f_t* angles, axis3f_t* velocities, axis3f_t mag) {
     velocities->y = ELEM(AHRS_EKF_u, 4, 0); //u(4,0) is speed along local y axis according to IMU ref. frame
     velocities->z = ELEM(AHRS_EKF_u, 5, 0); //u(5,0) is speed along local z axis according to IMU ref. frame
 
-    matrixDelete(&deltaM);
-    matrixDelete(&M_mag);
-    matrixDelete(&TMP1_mag);
-    matrixDelete(&TMP2_mag);
-    matrixDelete(&K_mag);
+    (void)matrixDelete(&deltaM);
+    (void)matrixDelete(&M_mag);
+    (void)matrixDelete(&TMP1_mag);
+    (void)matrixDelete(&TMP2_mag);
+    (void)matrixDelete(&K_mag);
     return;
 }
 
 /*------------------------Update with velocity along x,y local-----------------------------*/
 void AHRS_EKF_updateVelXY(axis3f_t* angles, axis3f_t* velocities, float vx, float vy, float dt_s) {
-    matrix_t deltaM, R_tmp, C_tmp;
+    matrix_t deltaM;
+    matrix_t R_tmp;
+    matrix_t C_tmp;
 
-    matrixInit(&deltaM, 2, 1);
-    matrixInit(&R_tmp, 2, 2);
-    matrixInit(&C_tmp, 2, AHRS_EKF_STATE_SIZE);
+    (void)matrixInit(&deltaM, 2, 1);
+    (void)matrixInit(&R_tmp, 2, 2);
+    (void)matrixInit(&C_tmp, 2, AHRS_EKF_STATE_SIZE);
 
     /* R matrix */
     ELEM(R_tmp, 0, 0) = _r_vxy / dt_s;
     ELEM(R_tmp, 1, 1) = ELEM(R_tmp, 0, 0);
 
     /* C matrix */
-    ELEM(C_tmp, 0, 3) = 1.f;
-    ELEM(C_tmp, 1, 4) = 1.f;
+    ELEM(C_tmp, 0, 3) = 1.0f;
+    ELEM(C_tmp, 1, 4) = 1.0f;
 
     /* Delta measures */
     ELEM(deltaM, 0, 0) = vx - ELEM(AHRS_EKF_u, 3, 0);
@@ -460,7 +473,7 @@ void AHRS_EKF_updateVelXY(axis3f_t* angles, axis3f_t* velocities, float vx, floa
     matrixAdd(&_M, &R_tmp, &_M);
     //_K = _P * (~C_tmp) * (!_M);
     matrixMult_rhsT(&_P, &C_tmp, &TMP1); //TMP1 contains _P * (~_C)
-    matrixInversed(&_M, &TMP2);          //TMP2 contains (!_M)
+    (void)matrixInversed(&_M, &TMP2);          //TMP2 contains (!_M)
     matrixMult(&TMP1, &TMP2, &_K);
 
     /* Correct state vector */
@@ -480,7 +493,7 @@ void AHRS_EKF_updateVelXY(axis3f_t* angles, axis3f_t* velocities, float vx, floa
     angles->x = ELEM(AHRS_EKF_u, 0, 0);                    //u(0,0) is roll according to IMU ref. frame
     angles->y = ELEM(AHRS_EKF_u, 1, 0);                    //u(1,0) is pitch according to IMU ref. frame
     angles->z = fmodf(ELEM(AHRS_EKF_u, 2, 0), constTWOPI); //u(2,0) is yaw according to IMU ref. frame
-    if (angles->z < 0) {
+    if (angles->z < 0.0f) {
         angles->z += constTWOPI;
     }
 
@@ -489,22 +502,23 @@ void AHRS_EKF_updateVelXY(axis3f_t* angles, axis3f_t* velocities, float vx, floa
     velocities->y = ELEM(AHRS_EKF_u, 4, 0); //u(4,0) is speed along local y axis according to IMU ref. frame
     velocities->z = ELEM(AHRS_EKF_u, 5, 0); //u(5,0) is speed along local z axis according to IMU ref. frame
 
-    matrixDelete(&deltaM);
-    matrixDelete(&R_tmp);
-    matrixDelete(&C_tmp);
+    (void)matrixDelete(&deltaM);
+    (void)matrixDelete(&R_tmp);
+    (void)matrixDelete(&C_tmp);
 
     return;
 }
 
 /*-------------------------Update with velocity along z local-------------------------------*/
 void AHRS_EKF_updateVelZ(axis3f_t* angles, axis3f_t* velocities, float vz, float dt_s) {
-    matrix_t C_tmp, K;
+    matrix_t C_tmp;
+    matrix_t K;
 
-    matrixInit(&C_tmp, 1, AHRS_EKF_STATE_SIZE);
-    matrixInit(&K, AHRS_EKF_STATE_SIZE, 1);
+    (void)matrixInit(&C_tmp, 1, AHRS_EKF_STATE_SIZE);
+    (void)matrixInit(&K, AHRS_EKF_STATE_SIZE, 1);
 
     /* C matrix */
-    ELEM(C_tmp, 0, 5) = 1.f;
+    ELEM(C_tmp, 0, 5) = 1.0f;
 
     /* Delta measures */
     float deltaM = vz - ELEM(AHRS_EKF_u, 5, 0);
@@ -514,7 +528,7 @@ void AHRS_EKF_updateVelZ(axis3f_t* angles, axis3f_t* velocities, float vz, float
    _K = _P * (~C_tmp) * (!_M);*/
 
     /* Faster Gain matrix K */
-    float inv_m = 1.f / (ELEM(_P, 5, 5) + (_r_vz / dt_s));
+    float inv_m = 1.0f / (ELEM(_P, 5, 5) + (_r_vz / dt_s));
     for (uint8_t i = 0; i < _P.rows; i++) {
         ELEM(K, i, 0) = ELEM(_P, i, 5) * inv_m;
     }
@@ -536,7 +550,7 @@ void AHRS_EKF_updateVelZ(axis3f_t* angles, axis3f_t* velocities, float vz, float
     angles->x = ELEM(AHRS_EKF_u, 0, 0);                    //u(0,0) is roll according to IMU ref. frame
     angles->y = ELEM(AHRS_EKF_u, 1, 0);                    //u(1,0) is pitch according to IMU ref. frame
     angles->z = fmodf(ELEM(AHRS_EKF_u, 2, 0), constTWOPI); //u(2,0) is yaw according to IMU ref. frame
-    if (angles->z < 0) {
+    if (angles->z < 0.0f) {
         angles->z += constTWOPI;
     }
 
@@ -545,19 +559,21 @@ void AHRS_EKF_updateVelZ(axis3f_t* angles, axis3f_t* velocities, float vz, float
     velocities->y = ELEM(AHRS_EKF_u, 4, 0); //u(4,0) is speed along local y axis according to IMU ref. frame
     velocities->z = ELEM(AHRS_EKF_u, 5, 0); //u(5,0) is speed along local z axis according to IMU ref. frame
 
-    matrixDelete(&C_tmp);
-    matrixDelete(&K);
+    (void)matrixDelete(&C_tmp);
+    (void)matrixDelete(&K);
 
     return;
 }
 
 //-------------------------Update with velocity along N,E global------------------------------//
 void AHRS_EKF_updateVelNE(axis3f_t* angles, axis3f_t* velocities, float vN, float vE, float dt_s) {
-    matrix_t deltaM, R_tmp, C_tmp;
+    matrix_t deltaM;
+    matrix_t R_tmp;
+    matrix_t C_tmp;
 
-    matrixInit(&deltaM, 2, 1);
-    matrixInit(&R_tmp, 2, 2);
-    matrixInit(&C_tmp, 2, AHRS_EKF_STATE_SIZE);
+    (void)matrixInit(&deltaM, 2, 1);
+    (void)matrixInit(&R_tmp, 2, 2);
+    (void)matrixInit(&C_tmp, 2, AHRS_EKF_STATE_SIZE);
 
     /* R matrix */
     ELEM(R_tmp, 0, 0) = _r_vne / dt_s;
@@ -573,26 +589,26 @@ void AHRS_EKF_updateVelNE(axis3f_t* angles, axis3f_t* velocities, float vN, floa
 
     /* C matrix */
     //C_tmp.zeros(); //zeros or not?
-    float tmp1 = sPhi * sPsi + cPhi * cPsi * sTheta;
-    float tmp2 = cPhi * cPsi + sPhi * sPsi * sTheta;
-    float tmp3 = cPhi * sPsi - cPsi * sPhi * sTheta;
-    float tmp4 = cPsi * sPhi - cPhi * sPsi * sTheta;
-    ELEM(C_tmp, 0, 0) = ELEM(AHRS_EKF_u, 4, 0) * tmp1 + ELEM(AHRS_EKF_u, 5, 0) * tmp3;
-    ELEM(C_tmp, 0, 1) = ELEM(AHRS_EKF_u, 5, 0) * cPhi * cPsi * cTheta - ELEM(AHRS_EKF_u, 3, 0) * cPsi * sTheta + ELEM(AHRS_EKF_u, 4, 0) * cPsi * cTheta * sPhi;
-    ELEM(C_tmp, 0, 2) = ELEM(AHRS_EKF_u, 5, 0) * tmp4 - ELEM(AHRS_EKF_u, 4, 0) * tmp2 - ELEM(AHRS_EKF_u, 3, 0) * cTheta * sPsi;
+    float tmp1 = (sPhi * sPsi) + (cPhi * cPsi * sTheta);
+    float tmp2 = (cPhi * cPsi) + (sPhi * sPsi * sTheta);
+    float tmp3 = (cPhi * sPsi) - (cPsi * sPhi * sTheta);
+    float tmp4 = (cPsi * sPhi) - (cPhi * sPsi * sTheta);
+    ELEM(C_tmp, 0, 0) = (ELEM(AHRS_EKF_u, 4, 0) * tmp1) + (ELEM(AHRS_EKF_u, 5, 0) * tmp3);
+    ELEM(C_tmp, 0, 1) = (ELEM(AHRS_EKF_u, 5, 0) * cPhi * cPsi * cTheta) - (ELEM(AHRS_EKF_u, 3, 0) * cPsi * sTheta) + (ELEM(AHRS_EKF_u, 4, 0) * cPsi * cTheta * sPhi);
+    ELEM(C_tmp, 0, 2) = (ELEM(AHRS_EKF_u, 5, 0) * tmp4) - (ELEM(AHRS_EKF_u, 4, 0) * tmp2) - (ELEM(AHRS_EKF_u, 3, 0) * cTheta * sPsi);
     ELEM(C_tmp, 0, 3) = cPsi * cTheta;
     ELEM(C_tmp, 0, 4) = -tmp3;
     ELEM(C_tmp, 0, 5) = tmp1;
-    ELEM(C_tmp, 1, 0) = -ELEM(AHRS_EKF_u, 4, 0) * tmp4 - ELEM(AHRS_EKF_u, 5, 0) * tmp2;
-    ELEM(C_tmp, 1, 1) = ELEM(AHRS_EKF_u, 5, 0) * cPhi * cTheta * sPsi - ELEM(AHRS_EKF_u, 3, 0) * sPsi * sTheta + ELEM(AHRS_EKF_u, 4, 0) * cTheta * sPhi * sPsi;
-    ELEM(C_tmp, 1, 2) = ELEM(AHRS_EKF_u, 5, 0) * tmp1 - ELEM(AHRS_EKF_u, 4, 0) * tmp3 + ELEM(AHRS_EKF_u, 3, 0) * cPsi * cTheta;
+    ELEM(C_tmp, 1, 0) = (-ELEM(AHRS_EKF_u, 4, 0) * tmp4) - (ELEM(AHRS_EKF_u, 5, 0) * tmp2);
+    ELEM(C_tmp, 1, 1) = (ELEM(AHRS_EKF_u, 5, 0) * cPhi * cTheta * sPsi) - (ELEM(AHRS_EKF_u, 3, 0) * sPsi * sTheta) + (ELEM(AHRS_EKF_u, 4, 0) * cTheta * sPhi * sPsi);
+    ELEM(C_tmp, 1, 2) = (ELEM(AHRS_EKF_u, 5, 0) * tmp1) - (ELEM(AHRS_EKF_u, 4, 0) * tmp3) + (ELEM(AHRS_EKF_u, 3, 0) * cPsi * cTheta);
     ELEM(C_tmp, 1, 3) = cTheta * sPsi;
     ELEM(C_tmp, 1, 4) = tmp2;
     ELEM(C_tmp, 1, 5) = -tmp4;
 
     /* Delta measures */
-    ELEM(deltaM, 0, 0) = vN - (ELEM(AHRS_EKF_u, 5, 0) * tmp1 - ELEM(AHRS_EKF_u, 4, 0) * tmp3 + ELEM(AHRS_EKF_u, 3, 0) * cPsi * cTheta);
-    ELEM(deltaM, 1, 0) = vE - (ELEM(AHRS_EKF_u, 4, 0) * tmp2 - ELEM(AHRS_EKF_u, 5, 0) * tmp4 + ELEM(AHRS_EKF_u, 3, 0) * cTheta * sPsi);
+    ELEM(deltaM, 0, 0) = vN - ((ELEM(AHRS_EKF_u, 5, 0) * tmp1) - (ELEM(AHRS_EKF_u, 4, 0) * tmp3) + (ELEM(AHRS_EKF_u, 3, 0) * cPsi * cTheta));
+    ELEM(deltaM, 1, 0) = vE - ((ELEM(AHRS_EKF_u, 4, 0) * tmp2) - (ELEM(AHRS_EKF_u, 5, 0) * tmp4) + (ELEM(AHRS_EKF_u, 3, 0) * cTheta * sPsi));
 
     /* Gain matrix K */
     //_M = QuadProd(C_tmp,_P) + R_tmp;
@@ -600,7 +616,7 @@ void AHRS_EKF_updateVelNE(axis3f_t* angles, axis3f_t* velocities, float vN, floa
     matrixAdd(&_M, &R_tmp, &_M);
     //_K = _P * (~C_tmp) * (!_M);
     matrixMult_rhsT(&_P, &C_tmp, &TMP1); //TMP1 contains _P * (~_C)
-    matrixInversed(&_M, &TMP2);          //TMP2 contains (!_M)
+    (void)matrixInversed(&_M, &TMP2);          //TMP2 contains (!_M)
     matrixMult(&TMP1, &TMP2, &_K);
 
     /* Correct state vector */
@@ -620,7 +636,7 @@ void AHRS_EKF_updateVelNE(axis3f_t* angles, axis3f_t* velocities, float vN, floa
     angles->x = ELEM(AHRS_EKF_u, 0, 0);                    //u(0,0) is roll according to IMU ref. frame
     angles->y = ELEM(AHRS_EKF_u, 1, 0);                    //u(1,0) is pitch according to IMU ref. frame
     angles->z = fmodf(ELEM(AHRS_EKF_u, 2, 0), constTWOPI); //u(2,0) is yaw according to IMU ref. frame
-    if (angles->z < 0) {
+    if (angles->z < 0.0f) {
         angles->z += constTWOPI;
     }
 
@@ -629,20 +645,22 @@ void AHRS_EKF_updateVelNE(axis3f_t* angles, axis3f_t* velocities, float vN, floa
     velocities->y = ELEM(AHRS_EKF_u, 4, 0); //u(4,0) is speed along local y axis according to IMU ref. frame
     velocities->z = ELEM(AHRS_EKF_u, 5, 0); //u(5,0) is speed along local z axis according to IMU ref. frame
 
-    matrixDelete(&deltaM);
-    matrixDelete(&R_tmp);
-    matrixDelete(&C_tmp);
+    (void)matrixDelete(&deltaM);
+    (void)matrixDelete(&R_tmp);
+    (void)matrixDelete(&C_tmp);
 
     return;
 }
 
 //--------------------------Update with velocity along D global--------------------------------//
 void AHRS_EKF_updateVelD(axis3f_t* angles, axis3f_t* velocities, float vD, float dt_s) {
-    matrix_t C_tmp, K, M;
+    matrix_t C_tmp;
+    matrix_t K;
+    matrix_t M;
 
-    matrixInit(&C_tmp, 1, AHRS_EKF_STATE_SIZE);
-    matrixInit(&K, AHRS_EKF_STATE_SIZE, 1);
-    matrixInit(&M, 1, 1);
+    (void)matrixInit(&C_tmp, 1, AHRS_EKF_STATE_SIZE);
+    (void)matrixInit(&K, AHRS_EKF_STATE_SIZE, 1);
+    (void)matrixInit(&M, 1, 1);
 
     /* Trig functions */
     float sPhi = SIN(ELEM(AHRS_EKF_u, 0, 0));
@@ -652,14 +670,14 @@ void AHRS_EKF_updateVelD(axis3f_t* angles, axis3f_t* velocities, float vD, float
 
     /* C matrix */
     //C_tmp.zeros(); //zeros or not?
-    ELEM(C_tmp, 0, 0) = ELEM(AHRS_EKF_u, 4, 0) * cPhi * cTheta - ELEM(AHRS_EKF_u, 5, 0) * cTheta * sPhi;
-    ELEM(C_tmp, 0, 1) = -ELEM(AHRS_EKF_u, 3, 0) * cTheta - ELEM(AHRS_EKF_u, 5, 0) * cPhi * sTheta - ELEM(AHRS_EKF_u, 4, 0) * sPhi * sTheta;
+    ELEM(C_tmp, 0, 0) = (ELEM(AHRS_EKF_u, 4, 0) * cPhi * cTheta) - (ELEM(AHRS_EKF_u, 5, 0) * cTheta * sPhi);
+    ELEM(C_tmp, 0, 1) = (-ELEM(AHRS_EKF_u, 3, 0) * cTheta) - (ELEM(AHRS_EKF_u, 5, 0) * cPhi * sTheta) - (ELEM(AHRS_EKF_u, 4, 0) * sPhi * sTheta);
     ELEM(C_tmp, 0, 3) = -sTheta;
     ELEM(C_tmp, 0, 4) = cTheta * sPhi;
     ELEM(C_tmp, 0, 5) = cPhi * cTheta;
 
     /* Delta measures */
-    float deltaM = vD - (ELEM(AHRS_EKF_u, 5, 0) * cPhi * cTheta - ELEM(AHRS_EKF_u, 3, 0) * sTheta + ELEM(AHRS_EKF_u, 4, 0) * cTheta * sPhi);
+    float deltaM = vD - ((ELEM(AHRS_EKF_u, 5, 0) * cPhi * cTheta) - (ELEM(AHRS_EKF_u, 3, 0) * sTheta) + (ELEM(AHRS_EKF_u, 4, 0) * cTheta * sPhi));
 
     /* Gain matrix K */
     //_M = QuadProd(C_tmp,_P) + (_r_vd / dt_s);
@@ -686,7 +704,7 @@ void AHRS_EKF_updateVelD(axis3f_t* angles, axis3f_t* velocities, float vD, float
     angles->x = ELEM(AHRS_EKF_u, 0, 0);                    //u(0,0) is roll according to IMU ref. frame
     angles->y = ELEM(AHRS_EKF_u, 1, 0);                    //u(1,0) is pitch according to IMU ref. frame
     angles->z = fmodf(ELEM(AHRS_EKF_u, 2, 0), constTWOPI); //u(2,0) is yaw according to IMU ref. frame
-    if (angles->z < 0) {
+    if (angles->z < 0.0f) {
         angles->z += constTWOPI;
     }
 
@@ -695,9 +713,9 @@ void AHRS_EKF_updateVelD(axis3f_t* angles, axis3f_t* velocities, float vD, float
     velocities->y = ELEM(AHRS_EKF_u, 4, 0); //u(4,0) is speed along local y axis according to IMU ref. frame
     velocities->z = ELEM(AHRS_EKF_u, 5, 0); //u(5,0) is speed along local z axis according to IMU ref. frame
 
-    matrixDelete(&C_tmp);
-    matrixDelete(&K);
-    matrixDelete(&M);
+    (void)matrixDelete(&C_tmp);
+    (void)matrixDelete(&K);
+    (void)matrixDelete(&M);
 
     return;
 }
@@ -724,7 +742,7 @@ void AHRS_EKF_reset(axis3f_t* angles, axis3f_t* velocities, float phi0, float th
     angles->x = ELEM(AHRS_EKF_u, 0, 0);                    //u(0,0) is roll according to IMU ref. frame
     angles->y = ELEM(AHRS_EKF_u, 1, 0);                    //u(1,0) is pitch according to IMU ref. frame
     angles->z = fmodf(ELEM(AHRS_EKF_u, 2, 0), constTWOPI); //u(2,0) is yaw according to IMU ref. frame
-    if (angles->z < 0) {
+    if (angles->z < 0.0f) {
         angles->z += constTWOPI;
     }
 
@@ -799,7 +817,7 @@ void AHRS_EKF_setVelDNoise(float vD) {
 
 /*----------------------------Get values from state vector----------------------------------*/
 float AHRS_EKF_getStateValue(uint8_t idx) {
-    if (idx >= AHRS_EKF_STATE_SIZE) {
+    if (idx >= (uint8_t)AHRS_EKF_STATE_SIZE) {
         return 0.0f;
     }
 

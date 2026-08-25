@@ -32,8 +32,8 @@
 /* END Header */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __IMU_QUATERNIONST_H__
-#define __IMU_QUATERNIONST_H__
+#ifndef IMU_QUATERNIONST_H
+#define IMU_QUATERNIONST_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -82,4 +82,4 @@ void IMU_quaternionST_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro, IM
 }
 #endif
 
-#endif /* __IMU_QUATERNIONST_H__ */
+#endif /* IMU_QUATERNIONST_H */

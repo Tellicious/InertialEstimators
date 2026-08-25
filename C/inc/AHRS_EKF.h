@@ -32,8 +32,8 @@
 /* END Header */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __AHRS_EKF_H__
-#define __AHRS_EKF_H__
+#ifndef AHRS_EKF_H
+#define AHRS_EKF_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -181,7 +181,7 @@ Northern Emisphere positive (pointing down), Southern Emisphere negative (pointi
 
 /* Initial standard deviation of the z local velocity estimate, in m/s */
 #ifndef configAHRS_EKF_P0_VZ_STD
-#define configAHRS_EKF_P0_VZ_STD 1.f
+#define configAHRS_EKF_P0_VZ_STD 1.0f
 #endif
 
 /* Initial standard deviation of the damping coefficient estimate, in N*s/m */
@@ -369,4 +369,4 @@ float AHRS_EKF_getStateValue(uint8_t idx);
 }
 #endif
 
-#endif /* __AHRS_EKF_H__ */
+#endif /* AHRS_EKF_H */

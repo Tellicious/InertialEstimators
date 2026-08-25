@@ -39,7 +39,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 static quaternion_t _q = {1, 0, 0, 0};
-static float _q0q0 = 1.f;
+static float _q0q0 = 1.0f;
 static float _q0q1 = 0.f;
 static float _q0q2 = 0.f;
 static float _q0q3 = 0.f;
@@ -58,32 +58,34 @@ void AHRS_PX4_S03_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro, axis3f
 
     /* If magnetometer measurement is available, use it */
     if (!((mag.x == 0.0f) && (mag.y == 0.0f) && (mag.z == 0.0f))) {
-        axis3f_t h, halfw;
-        float bx, bz;
+        axis3f_t h;
+        axis3f_t halfw;
+        float bx;
+        float bz;
 
         /* Normalise magnetometer measurement */
         /* Will sqrt work better? PX4 system is powerful enough? */
-        inv_norm = INVSQRT(mag.x * mag.x + mag.y * mag.y + mag.z * mag.z);
+        inv_norm = INVSQRT(((mag.x * mag.x) + (mag.y * mag.y)) + (mag.z * mag.z));
         mag.x *= inv_norm;
         mag.y *= inv_norm;
         mag.z *= inv_norm;
 
         /* Reference direction of Earth's magnetic field */
-        h.x = 2.0f * (mag.x * (0.5f - _q2q2 - _q3q3) + mag.y * (_q1q2 - _q0q3) + mag.z * (_q1q3 + _q0q2));
-        h.y = 2.0f * (mag.x * (_q1q2 + _q0q3) + mag.y * (0.5f - _q1q1 - _q3q3) + mag.z * (_q2q3 - _q0q1));
-        h.z = 2.0f * mag.x * (_q1q3 - _q0q2) + 2.0f * mag.y * (_q2q3 + _q0q1) + 2.0f * mag.z * (0.5f - _q1q1 - _q2q2);
-        bx = SQRT(h.x * h.x + h.y * h.y);
+        h.x = 2.0f * (((mag.x * ((0.5f - _q2q2) - _q3q3)) + (mag.y * (_q1q2 - _q0q3))) + (mag.z * (_q1q3 + _q0q2)));
+        h.y = 2.0f * (((mag.x * (_q1q2 + _q0q3)) + (mag.y * ((0.5f - _q1q1) - _q3q3))) + (mag.z * (_q2q3 - _q0q1)));
+        h.z = 2.0f * (((mag.x * (_q1q3 - _q0q2)) + (mag.y * (_q2q3 + _q0q1))) + (mag.z * ((0.5f - _q1q1) - _q2q2)));
+        bx = SQRT((h.x * h.x) + (h.y * h.y));
         bz = h.z;
 
         /* Estimated direction of magnetic field */
-        halfw.x = bx * (0.5f - _q2q2 - _q3q3) + bz * (_q1q3 - _q0q2);
-        halfw.y = bx * (_q1q2 - _q0q3) + bz * (_q0q1 + _q2q3);
-        halfw.z = bx * (_q0q2 + _q1q3) + bz * (0.5f - _q1q1 - _q2q2);
+        halfw.x = (bx * ((0.5f - _q2q2) - _q3q3)) + (bz * (_q1q3 - _q0q2));
+        halfw.y = (bx * (_q1q2 - _q0q3)) + (bz * (_q0q1 + _q2q3));
+        halfw.z = (bx * (_q0q2 + _q1q3)) + (bz * ((0.5f - _q1q1) - _q2q2));
 
         /* Error is sum of cross product between estimated direction and measured direction of field vectors */
-        halfe.x += (mag.y * halfw.z - mag.z * halfw.y);
-        halfe.y += (mag.z * halfw.x - mag.x * halfw.z);
-        halfe.z += (mag.x * halfw.y - mag.y * halfw.x);
+        halfe.x += (mag.y * halfw.z) - (mag.z * halfw.y);
+        halfe.y += (mag.z * halfw.x) - (mag.x * halfw.z);
+        halfe.z += (mag.x * halfw.y) - (mag.y * halfw.x);
     }
 
     /* Compute feedback only if accelerometer measurement valid (avoids NaN in accelerometer normalisation) */
@@ -91,7 +93,7 @@ void AHRS_PX4_S03_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro, axis3f
         axis3f_t halfv;
 
         /* Normalise accelerometer measurement */
-        inv_norm = 1.f / sqrtf(accel.x * accel.x + accel.y * accel.y + accel.z * accel.z);
+        inv_norm = 1.0f / sqrtf(((accel.x * accel.x) + (accel.y * accel.y)) + (accel.z * accel.z));
         accel.x *= inv_norm;
         accel.y *= inv_norm;
         accel.z *= inv_norm;
@@ -99,22 +101,22 @@ void AHRS_PX4_S03_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro, axis3f
         /* Estimated direction of gravity and magnetic field */
         halfv.x = _q1q3 - _q0q2;
         halfv.y = _q0q1 + _q2q3;
-        halfv.z = _q0q0 - 0.5f + _q3q3;
+        halfv.z = (_q0q0 - 0.5f) + _q3q3;
 
         /* Error is sum of cross product between estimated direction and measured direction of field vectors */
-        halfe.x += accel.y * halfv.z - accel.z * halfv.y;
-        halfe.y += accel.z * halfv.x - accel.x * halfv.z;
-        halfe.z += accel.x * halfv.y - accel.y * halfv.x;
+        halfe.x += (accel.y * halfv.z) - (accel.z * halfv.y);
+        halfe.y += (accel.z * halfv.x) - (accel.x * halfv.z);
+        halfe.z += (accel.x * halfv.y) - (accel.y * halfv.x);
     }
 
     /* Apply feedback only when valid data has been gathered from the accelerometer or magnetometer */
-    if (halfe.x != 0.0f && halfe.y != 0.0f && halfe.z != 0.0f) {
+    if ((halfe.x != 0.0f) && (halfe.y != 0.0f) && (halfe.z != 0.0f)) {
         /* Compute and apply integral feedback if enabled */
         if (configAHRS_PX4_SO3_KI > 0) {
             /* Integral error scaled by Ki */
-            gyro_bias.x += configAHRS_PX4_SO3_KI * halfe.x * configAHRS_PX4_SO3_LOOP_TIME_S;
-            gyro_bias.y += configAHRS_PX4_SO3_KI * halfe.y * configAHRS_PX4_SO3_LOOP_TIME_S;
-            gyro_bias.z += configAHRS_PX4_SO3_KI * halfe.z * configAHRS_PX4_SO3_LOOP_TIME_S;
+            gyro_bias.x += (configAHRS_PX4_SO3_KI * halfe.x) * configAHRS_PX4_SO3_LOOP_TIME_S;
+            gyro_bias.y += (configAHRS_PX4_SO3_KI * halfe.y) * configAHRS_PX4_SO3_LOOP_TIME_S;
+            gyro_bias.z += (configAHRS_PX4_SO3_KI * halfe.z) * configAHRS_PX4_SO3_LOOP_TIME_S;
 
             /* Apply integral feedback */
             gyro.x += gyro_bias.x;
@@ -142,10 +144,10 @@ void AHRS_PX4_S03_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro, axis3f
     /* Time derivative of quaternion. q_dot = 0.5*q\otimes omega */
     /* q_k = q_{k-1} + configAHRS_PX4_SO3_LOOP_TIME_S*\dot{q} */
     /* \dot{q} = 0.5*q \otimes P(\omega) */
-    float dq0 = 0.5f * (-_q.q1 * gyro.x - _q.q2 * gyro.y - _q.q3 * gyro.z);
-    float dq1 = 0.5f * (_q.q0 * gyro.x + _q.q2 * gyro.z - _q.q3 * gyro.y);
-    float dq2 = 0.5f * (_q.q0 * gyro.y - _q.q1 * gyro.z + _q.q3 * gyro.x);
-    float dq3 = 0.5f * (_q.q0 * gyro.z + _q.q1 * gyro.y - _q.q2 * gyro.x);
+    float dq0 = 0.5f * (((-_q.q1 * gyro.x) - (_q.q2 * gyro.y)) - (_q.q3 * gyro.z));
+    float dq1 = 0.5f * (((_q.q0 * gyro.x) + (_q.q2 * gyro.z)) - (_q.q3 * gyro.y));
+    float dq2 = 0.5f * (((_q.q0 * gyro.y) - (_q.q1 * gyro.z)) + (_q.q3 * gyro.x));
+    float dq3 = 0.5f * (((_q.q0 * gyro.z) + (_q.q1 * gyro.y)) - (_q.q2 * gyro.x));
 
     _q.q0 += configAHRS_PX4_SO3_LOOP_TIME_S * dq0;
     _q.q1 += configAHRS_PX4_SO3_LOOP_TIME_S * dq1;
@@ -183,10 +185,10 @@ void AHRS_PX4_S03_reset(axis3f_t* angles, float phi0, float theta0, float psi0) 
     float cPsi = COS(psi0 * 0.5f);
     float sPsi = SIN(psi0 * 0.5f);
 
-    _q.q0 = cPhi * cTheta * cPsi + sPhi * sTheta * sPsi;
-    _q.q1 = sPhi * cTheta * cPsi - cPhi * sTheta * sPsi;
-    _q.q2 = cPhi * sTheta * cPsi + sPhi * cTheta * sPsi;
-    _q.q3 = cPhi * cTheta * sPsi - sPhi * sTheta * cPsi;
+    _q.q0 = ((cPhi * cTheta * cPsi)) + ((sPhi * sTheta) * sPsi);
+    _q.q1 = ((sPhi * cTheta) * cPsi) - ((cPhi * sTheta) * sPsi);
+    _q.q2 = ((cPhi * sTheta) * cPsi) + ((sPhi * cTheta) * sPsi);
+    _q.q3 = ((cPhi * cTheta) * sPsi) - ((sPhi * sTheta) * cPsi);
 
     /* Auxiliary variables to avoid repeated arithmetic */
     _q0q0 = _q.q0 * _q.q0;

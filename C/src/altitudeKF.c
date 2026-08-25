@@ -51,7 +51,7 @@
  * B=[0 0;0 0; 1 0; 0 1];
  * C=[1 0 0 0; 0 0 1 0];
  * Q=[0.36 0; 0 0.05];
- * R=[100 0; 0 70]; //R=[15^2 0; 0 36];
+ * R=[100 0; 0 70]; %R=[15^2 0; 0 36];
  * Plant=ss(A,B,C,0,T,'inputname',{'v_acc_noise', 'v_acc_bias_noise'},'outputname',{'h','vAcc'},'statename',{'h','RoC','vAcc','v_acc_bias'});
  * [kalmf,L,P,M] = kalman(Plant,Q,R);
  * [L(:,1);L(:,2)]
@@ -63,7 +63,7 @@
  * B=[0 0;0 0; 1 0; 0 1];
  * C=[1 0 0 0; 0 0 1 0; 0 1 0 0];
  * Q=[0.36 0; 0 0.05];
- * R=[100 0 0; 0 70 0; 0 0 80]; //R=[15^2 0 0; 0 80 0; 0 0 36];
+ * R=[100 0 0; 0 70 0; 0 0 80]; %R=[15^2 0 0; 0 80 0; 0 0 36];
  * Plant=ss(A,B,C,0,T,'inputname',{'v_acc_noise', 'v_acc_bias_noise'},'outputname',{'h','vAcc', 'RoC'},'statename',{'h','RoC','vAcc','v_acc_bias'});
  * [kalmf,L,P,M] = kalman(Plant,Q,R);
  * [L(:,1);L(:,3);L(:,3);L(:,2)]
@@ -92,25 +92,26 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* Gain matrix */
-matrix_t K;
+static matrix_t K;
 
 #ifdef configALTITUDE_KF_USE_APPROX_ALTITUDE
 static float _alt0; /* Ground altitude ISA */
 #else
 static float _inv_pressZeroLevel; /* Ground pressure */
-static float _alt_k1, _alt_kpow;  /* Altitude calculation coefficients */
+static float _alt_k1;
+static float _alt_kpow; /* Altitude calculation coefficients */
 #endif /* configALTITUDE_KF_USE_APPROX_ALTITUDE */
 
 #ifdef configALTITUDE_KF_ACC_HP_FILTER
-IIRFilterGeneric_t HPFilt_accD;
+static IIRFilterGeneric_t HPFilt_accD;
 #endif
 
 #if (configUSE_ALT_TOF != configTOF_DISABLE)
-IIRFilterDerivative_t LIDAR_diff;
+static IIRFilterDerivative_t LIDAR_diff;
 #endif
 
 #ifdef configALTITUDE_KF_DETECT_GROUND_EFFECT
-IIRFilterDerivative_t baro_diff;
+static IIRFilterDerivative_t baro_diff;
 #endif
 
 /* Private functions ---------------------------------------------------------*/
@@ -119,11 +120,17 @@ static float altitudeCalculation(float pressure) {
 
 #ifdef configALTITUDE_KF_USE_APPROX_ALTITUDE
     /* Approximated formula with ISA parameters (t_SL = 15°C, QNH = 101325 Pa) */
-    int32_t RP, h0, hs0, HP1, HP2, RH;
-    int16_t hs1, dP0;
+    int32_t RP;
+    int32_t h0;
+    int32_t hs0;
+    int32_t HP1;
+    int32_t HP2;
+    int32_t RH;
+    int16_t hs1;
+    int16_t dP0;
     int8_t P0;
 
-    RP = pressure * 800.f;
+    RP = (int32_t)(pressure * 800.f);
 
     if (RP >= 824000) {
         P0 = 103;
@@ -207,15 +214,19 @@ static float altitudeCalculation(float pressure) {
         hs1 = 2682;
     }
 
-    dP0 = RP - P0 * 8000;
+    dP0 = (int16_t)(RP - ((int32_t)P0 * 8000));
+    /* cppcheck-suppress misra-c2012-10.1 ; deviation: intentional signed arithmetic right-shift (fixed-point) */
     HP1 = (hs0 * dP0) >> 1;
+    /* cppcheck-suppress misra-c2012-10.1 ; deviation: intentional signed arithmetic right-shift (fixed-point) */
+    /* cppcheck-suppress[misra-c2012-10.1,misra-c2012-10.6] ; deviation: intentional signed arithmetic fixed-point */
     HP2 = (((hs1 * dP0) >> 14) * dP0) >> 4;
+    /* cppcheck-suppress misra-c2012-10.1 ; deviation: intentional signed arithmetic right-shift (fixed-point) */
     RH = ((HP1 + HP2) >> 8) + h0;
 
-    return (float)RH * 1e-3f - _alt0;
+    return ((float)RH * 1e-3f) - _alt0;
 #else
     /* Correct formula */
-    return (_alt_k1 * (1 - powf((pressure * _inv_pressZeroLevel), _alt_kpow)));
+    return (_alt_k1 * (1.0f - powf((pressure * _inv_pressZeroLevel), _alt_kpow)));
 #endif /* configALTITUDE_KF_USE_APPROX_ALTITUDE */
 }
 
@@ -223,7 +234,7 @@ static float altitudeKFAccelDownCalc(axis3f_t accel, float b_az, axis3f_t angles
     float accD;
 #if defined(configALTITUDE_KF_USE_ACC_D)
     //transform accel_z into accel_D
-    accD = (constG - accel.x * SIN(angles.y) + accel.y * COS(angles.y) * SIN(angles.x) + (accel.z - b_az) * COS(angles.y) * COS(angles.x));
+    accD = (constG - (accel.x * SIN(angles.y)) + (accel.y * COS(angles.y) * SIN(angles.x)) + ((accel.z - b_az) * COS(angles.y) * COS(angles.x)));
 #else
     accD = (constG + accel.z - b_az);
 #endif
@@ -248,12 +259,12 @@ static float altitudeKFVelDownCalc(axis3f_t vel, axis3f_t angles) {
 /* Functions -----------------------------------------------------------------*/
 
 void altitudeKF_init(altitudeState_t* altState, float pressGround, float tempGround) {
-
 /* Initialize support variables for altitude calculation */
 #ifdef configALTITUDE_KF_USE_APPROX_ALTITUDE
+    (void)tempGround;
     _alt0 = altitudeCalculation(pressGround);
 #else
-    _inv_pressZeroLevel = 1.f / pressGround;
+    _inv_pressZeroLevel = 1.0f / pressGround;
     _alt_k1 = tempGround / configALTITUDE_KF_CONST_TEMP_RATE;
     _alt_kpow = (configALTITUDE_KF_CONST_R * configALTITUDE_KF_CONST_TEMP_RATE) / (configALTITUDE_KF_CONST_M * constG);
 #endif /* configALTITUDE_KF_USE_APPROX_ALTITUDE */
@@ -273,52 +284,62 @@ void altitudeKF_init(altitudeState_t* altState, float pressGround, float tempGro
 #endif
 
     /* Calculate Kalman filter gain */
-    matrix_t A, B, C, /* Q, */ Qe, R, P, tmp1, tmp2, tmp3, tmp4;
+    matrix_t A;
+    matrix_t B;
+    matrix_t C;
+    /* matrix_t Q; */
+    matrix_t Qe;
+    matrix_t R;
+    matrix_t P;
+    matrix_t tmp1;
+    matrix_t tmp2;
+    matrix_t tmp3;
+    matrix_t tmp4;
 
     /* Initialize matrices */
-    matrixInit(&A, 4, 4);
-    matrixInit(&B, 4, 2);
-    matrixInit(&C, configALTITUDE_KF_NMEAS, 4);
-    // matrixInit(&Q, 2, 2);
-    matrixInit(&Qe, 4, 4);
-    matrixInit(&R, configALTITUDE_KF_NMEAS, configALTITUDE_KF_NMEAS);
-    matrixInit(&P, 4, 4);
-    matrixInit(&K, 4, configALTITUDE_KF_NMEAS);
-    matrixInit(&tmp1, 4, 4);
-    matrixInit(&tmp2, 4, configALTITUDE_KF_NMEAS);
-    matrixInit(&tmp3, configALTITUDE_KF_NMEAS, configALTITUDE_KF_NMEAS);
-    matrixInit(&tmp4, configALTITUDE_KF_NMEAS, configALTITUDE_KF_NMEAS);
+    (void)matrixInit(&A, 4, 4);
+    (void)matrixInit(&B, 4, 2);
+    (void)matrixInit(&C, configALTITUDE_KF_NMEAS, 4);
+    /* matrixInit(&Q, 2, 2); */
+    (void)matrixInit(&Qe, 4, 4);
+    (void)matrixInit(&R, configALTITUDE_KF_NMEAS, configALTITUDE_KF_NMEAS);
+    (void)matrixInit(&P, 4, 4);
+    (void)matrixInit(&K, 4, configALTITUDE_KF_NMEAS);
+    (void)matrixInit(&tmp1, 4, 4);
+    (void)matrixInit(&tmp2, 4, configALTITUDE_KF_NMEAS);
+    (void)matrixInit(&tmp3, configALTITUDE_KF_NMEAS, configALTITUDE_KF_NMEAS);
+    (void)matrixInit(&tmp4, configALTITUDE_KF_NMEAS, configALTITUDE_KF_NMEAS);
 
-    ELEM(A, 0, 0) = 1.f;
+    ELEM(A, 0, 0) = 1.0f;
     ELEM(A, 0, 1) = configALTITUDE_KF_LOOP_TIME_S;
     ELEM(A, 0, 2) = configALTITUDE_KF_LOOP_TIME_S * configALTITUDE_KF_LOOP_TIME_S * 0.5f;
     ELEM(A, 0, 3) = -ELEM(A, 0, 2);
-    ELEM(A, 1, 1) = 1.f;
+    ELEM(A, 1, 1) = 1.0f;
     ELEM(A, 1, 2) = configALTITUDE_KF_LOOP_TIME_S;
     ELEM(A, 1, 3) = -configALTITUDE_KF_LOOP_TIME_S;
-    ELEM(A, 2, 2) = 1.f;
-    ELEM(A, 3, 3) = 1.f;
-    ELEM(B, 2, 0) = 1.f;
-    ELEM(B, 3, 1) = 1.f;
+    ELEM(A, 2, 2) = 1.0f;
+    ELEM(A, 3, 3) = 1.0f;
+    ELEM(B, 2, 0) = 1.0f;
+    ELEM(B, 3, 1) = 1.0f;
     // ELEM(Q, 0, 0) = 0.36f;
     // ELEM(Q, 1, 1) = 0.05f;
     ELEM(Qe, 2, 2) = configALTITUDE_KF_AZ_STATE_NOISE * configALTITUDE_KF_LOOP_TIME_S;
     ELEM(Qe, 3, 3) = configALTITUDE_KF_B_AZ_NOISE * configALTITUDE_KF_LOOP_TIME_S;
-    ELEM(C, 0, 0) = 1.f;
-    ELEM(C, 1, 2) = 1.f;
+    ELEM(C, 0, 0) = 1.0f;
+    ELEM(C, 1, 2) = 1.0f;
     ELEM(R, 0, 0) = configALTITUDE_KF_H_NOISE / configALTITUDE_KF_LOOP_TIME_S;
     ELEM(R, 1, 1) = configALTITUDE_KF_AZ_MEAS_NOISE / configALTITUDE_KF_LOOP_TIME_S;
 
 #if (configUSE_ALT_TOF != configTOF_DISABLE) && defined(configALTITUDE_KF_USE_VELD_CORRECTION)
-    ELEM(C, 2, 1) = 1.f;
-    ELEM(C, 3, 1) = 1.f;
+    ELEM(C, 2, 1) = 1.0f;
+    ELEM(C, 3, 1) = 1.0f;
     ELEM(R, 2, 2) = configALTITUDE_KF_LIDAR_NOISE / configALTITUDE_KF_LOOP_TIME_S;
     ELEM(R, 3, 3) = configALTITUDE_KF_VD_NOISE / configALTITUDE_KF_LOOP_TIME_S;
 #elif (configUSE_ALT_TOF != configTOF_DISABLE)
-    ELEM(C, 2, 1) = 1.f;
+    ELEM(C, 2, 1) = 1.0f;
     ELEM(R, 2, 2) = configALTITUDE_KF_LIDAR_NOISE / configALTITUDE_KF_LOOP_TIME_S;
 #elif defined(configALTITUDE_KF_USE_VELD_CORRECTION)
-    ELEM(C, 2, 1) = 1.f;
+    ELEM(C, 2, 1) = 1.0f;
     ELEM(R, 2, 2) = configALTITUDE_KF_VD_NOISE / configALTITUDE_KF_LOOP_TIME_S;
 #endif
 
@@ -334,31 +355,31 @@ void altitudeKF_init(altitudeState_t* altState, float pressGround, float tempGro
     /* Calculation of K = A*P*C.'*inverse(C*H*C.'+R); */
     QuadProd(&C, &P, &tmp3);
     matrixAdd(&tmp3, &R, &tmp3);
-    matrixInversed(&tmp3, &tmp4);
+    (void)matrixInversed(&tmp3, &tmp4);
     matrixMult(&A, &P, &tmp1);
     matrixMult_rhsT(&tmp1, &C, &tmp2);
     matrixMult(&tmp2, &tmp4, &K);
 
     /* Delete temporary matrices */
-    matrixDelete(&A);
-    matrixDelete(&B);
-    matrixDelete(&C);
+    (void)matrixDelete(&A);
+    (void)matrixDelete(&B);
+    (void)matrixDelete(&C);
     //matrixDelete(&Q);
-    matrixDelete(&Qe);
-    matrixDelete(&R);
-    matrixDelete(&P);
-    matrixDelete(&tmp1);
-    matrixDelete(&tmp2);
-    matrixDelete(&tmp3);
-    matrixDelete(&tmp4);
+    (void)matrixDelete(&Qe);
+    (void)matrixDelete(&R);
+    (void)matrixDelete(&P);
+    (void)matrixDelete(&tmp1);
+    (void)matrixDelete(&tmp2);
+    (void)matrixDelete(&tmp3);
+    (void)matrixDelete(&tmp4);
 
     return;
 }
 
 void altitudeKF_prediction(altitudeState_t* altState) {
     /* Predict state */
-    altState->alt += configALTITUDE_KF_LOOP_TIME_S * altState->RoC
-                     + 0.5 * configALTITUDE_KF_LOOP_TIME_S * configALTITUDE_KF_LOOP_TIME_S * (altState->vAcc - altState->b_vAcc);
+    altState->alt += (configALTITUDE_KF_LOOP_TIME_S * altState->RoC)
+                     + (((0.5f * configALTITUDE_KF_LOOP_TIME_S) * configALTITUDE_KF_LOOP_TIME_S) * (altState->vAcc - altState->b_vAcc));
 
     altState->RoC += configALTITUDE_KF_LOOP_TIME_S * (altState->vAcc - altState->b_vAcc);
 
@@ -380,7 +401,7 @@ void altitudeKF_updateAccel(altitudeState_t* altState, axis3f_t accel, float b_a
 
     /* Correct with accelerometer only if measured value is within allowed range */
     if (fabsf(accelDown) > configALTITUDE_KF_MAX_ACCEL_DOWN) {
-        delta_accelDown = 0;
+        delta_accelDown = 0.0f;
     }
 
     /* Apply correction */
@@ -401,27 +422,29 @@ void altitudeKF_updateBaro(altitudeState_t* altState, float press, float dt_s) {
     float delta_baroAltitude = (baroAlt - altState->_altPred);
 
 #ifdef configALTITUDE_KF_DETECT_GROUND_EFFECT
-    static uint8_t isDerivativeInitialized = 0;
+    static uint8_t isDerivativeInitialized = 0U;
     if (!isDerivativeInitialized) {
         /* Initialize derivative calculation for barometer vertical speed estimation */
         IIRFilterDerivativeInit(&baro_diff, configALTITUDE_KF_BARO_DIFF_ND, dt_s * 1e3f);
-        isDerivativeInitialized = 1;
+        isDerivativeInitialized = 1U;
     }
-    static uint8_t groundEffectCounter = 0;
+    static uint8_t groundEffectCounter = 0U;
     float abs_baroRoC = fabsf(IIRFilterDerivativeProcess(&baro_diff, baroAlt));
 
     /* Detect ground effect based on baro RoC */
-    if (abs_baroRoC > configALTITUDE_KF_MAX_BARO_ROC && (groundEffectCounter < configALTITUDE_KF_GND_EFF_COUNT_MAX)) {
-        groundEffectCounter += configALTITUDE_KF_GND_EFF_INCR;
-        if (groundEffectCounter > configALTITUDE_KF_GND_EFF_COUNT_MAX) {
+    if ((abs_baroRoC > configALTITUDE_KF_MAX_BARO_ROC) && (groundEffectCounter < (uint8_t)configALTITUDE_KF_GND_EFF_COUNT_MAX)) {
+        groundEffectCounter += (uint8_t)configALTITUDE_KF_GND_EFF_INCR;
+        if (groundEffectCounter > (uint8_t)configALTITUDE_KF_GND_EFF_COUNT_MAX) {
             groundEffectCounter = configALTITUDE_KF_GND_EFF_COUNT_MAX;
         }
-    } else if ((abs_baroRoC < configALTITUDE_KF_THRESHOLD_BARO_ROC) && (groundEffectCounter > 0)) {
+    } else if ((abs_baroRoC < configALTITUDE_KF_THRESHOLD_BARO_ROC) && (groundEffectCounter > 0U)) {
         groundEffectCounter--;
+    } else {
+        /* No action required */
     }
 
     /* Apply progressive barometer correction reduction */
-    delta_baroAltitude *= (1.0f - (float)groundEffectCounter / configALTITUDE_KF_GND_EFF_COUNT_MAX);
+    delta_baroAltitude *= (1.0f - (float)groundEffectCounter / (float)configALTITUDE_KF_GND_EFF_COUNT_MAX);
 #endif /* configALTITUDE_KF_DETECT_GROUND_EFFECT */
 
     /* Apply correction */
@@ -435,7 +458,7 @@ void altitudeKF_updateBaro(altitudeState_t* altState, float press, float dt_s) {
 }
 
 #if (configUSE_ALT_TOF != configTOF_DISABLE)
-void altitudeKF_updateLIDAR(altitudeState_t* altState, float ToFAlt, axis3f_t angles, float dt_s) {
+void altitudeKF_updateLIDAR(altitudeState_t* altState, float ToFAlt, float dt_s) {
     static uint8_t isDerivativeInitialized = 0;
     if (!isDerivativeInitialized) {
         /* Initialize derivative calculation for vertical speed estimation */
@@ -444,11 +467,11 @@ void altitudeKF_updateLIDAR(altitudeState_t* altState, float ToFAlt, axis3f_t an
     }
 
     /* Differentiate LIDAR reading to obtain vertical speed */
-    IIRFilterDerivativeProcess(&LIDAR_diff, ToFAlt);
+    (void)IIRFilterDerivativeProcess(&LIDAR_diff, ToFAlt);
 
     /* Correct with LIDAR only if calculated rate of climb is within allowed range */
     if ((fabsf(LIDAR_diff.output) <= configALTITUDE_KF_MAX_LIDAR_ROC)) {
-        float delta_LIDARRoC = (LIDAR_diff.output - altState->_RoCPred) * dt_s / configALTITUDE_KF_LOOP_TIME_S;
+        float delta_LIDARRoC = (LIDAR_diff.output - altState->_RoCPred) * (dt_s / configALTITUDE_KF_LOOP_TIME_S);
         altState->alt += matrixGet(&K, 0, 2) * delta_LIDARRoC;
         altState->RoC += matrixGet(&K, 1, 2) * delta_LIDARRoC;
         altState->vAcc += matrixGet(&K, 2, 2) * delta_LIDARRoC;
@@ -469,9 +492,10 @@ void altitudeKF_updateVelD(altitudeState_t* altState, axis3f_t velocities, axis3
 
 void altitudeKF_setGround(float pressGround, float tempGround) {
 #ifdef configALTITUDE_KF_USE_APPROX_ALTITUDE
+    (void)tempGround;
     _alt0 = altitudeCalculation(pressGround);
 #else
-    _inv_pressZeroLevel = 1.f / pressGround;
+    _inv_pressZeroLevel = 1.0f / pressGround;
     _alt_k1 = tempGround / configALTITUDE_KF_CONST_TEMP_RATE;
     _alt_kpow = (configALTITUDE_KF_CONST_R * configALTITUDE_KF_CONST_TEMP_RATE) / (configALTITUDE_KF_CONST_M * constG);
 #endif /* configALTITUDE_KF_USE_APPROX_ALTITUDE */

@@ -36,8 +36,8 @@
 /* END Header */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __IMU_EKF_H__
-#define __IMU_EKF_H__
+#ifndef IMU_EKF_H
+#define IMU_EKF_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -143,7 +143,7 @@ extern "C" {
 
 /* Initial standard deviation of the z local velocity estimate, in m/s */
 #ifndef configIMU_EKF_P0_VZ_STD
-#define configIMU_EKF_P0_VZ_STD 1.f
+#define configIMU_EKF_P0_VZ_STD 1.0f
 #endif
 
 /* Initial standard deviation of the damping coefficient estimate, in N*s/m */
@@ -162,7 +162,7 @@ extern "C" {
 #endif
 
 /* Number of elements of the EKF state vector */
-#define IMU_EKF_STATE_SIZE 7
+#define IMU_EKF_STATE_SIZE 7U
 
 /* Function prototypes -------------------------------------------------------*/
 
@@ -284,4 +284,4 @@ float IMU_EKF_getStateValue(uint8_t idx);
 }
 #endif
 
-#endif /* __IMU_EKF_H__ */
+#endif /* IMU_EKF_H */

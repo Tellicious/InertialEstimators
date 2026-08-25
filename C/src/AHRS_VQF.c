@@ -155,32 +155,35 @@ typedef struct {
 
 /* Private variables ---------------------------------------------------------*/
 
-AHRS_VQF_Params_t params;
-AHRS_VQF_Coeffs_t coeffs;
-AHRS_VQF_State_t state;
+static AHRS_VQF_Params_t params;
+static AHRS_VQF_Coeffs_t coeffs;
+static AHRS_VQF_State_t state;
 
 /* Scratch matrices (allocated once in init) */
-matrix_t _R;
-matrix_t _TMP33a;
-matrix_t _TMP33b;
-matrix_t _TMP33c;
-matrix_t _TMP33d;
-matrix_t _TMP31a;
-matrix_t _TMP31b;
-matrix_t _TMP21a;
-matrix_t _e;
+static matrix_t _R;
+static matrix_t _TMP33a;
+static matrix_t _TMP33b;
+static matrix_t _TMP33c;
+static matrix_t _TMP33d;
+static matrix_t _TMP31a;
+static matrix_t _TMP31b;
+static matrix_t _TMP21a;
+static matrix_t _e;
 
 /* Functions -----------------------------------------------------------------*/
 
 static inline float vqf_square(float x) { return x * x; }
 
 static inline float vqf_wrapPi(float angle) {
-    if (angle > constPI) {
-        angle -= constTWOPI;
-    } else if (angle < -constPI) {
-        angle += constTWOPI;
+    float wrapped = angle;
+    if (wrapped > constPI) {
+        wrapped -= constTWOPI;
+    } else if (wrapped < -constPI) {
+        wrapped += constTWOPI;
+    } else {
+        /* No action required */
     }
-    return angle;
+    return wrapped;
 }
 
 static inline axis3f_t vqf_bodyNedToEnu(axis3f_t v_ned) {
@@ -234,15 +237,15 @@ static void vqf_filterCoeffs(float tau, float Ts, matrix_t* outB_3x1, matrix_t* 
     /* 2nd order Butterworth LPF based on https://stackoverflow.com/a/52764064 */
     const float fc = (constSQRT2 / (constTWOPI)) / tau;
     const float C = TAN(constPI * fc * Ts);
-    const float D = C * C + constSQRT2 * C + 1.0f;
+    const float D = ((C * C) + (constSQRT2 * C)) + 1.0f;
 
     const float b0 = (C * C) / D;
     outB_3x1->data[0] = b0;
     outB_3x1->data[1] = 2.0f * b0;
     outB_3x1->data[2] = b0;
 
-    outA_2x1->data[0] = 2.0f * (C * C - 1.0f) / D;           /* a1 (a0 = 1) */
-    outA_2x1->data[1] = (1.0f - constSQRT2 * C + C * C) / D; /* a2 */
+    outA_2x1->data[0] = 2.0f * (((C * C) - 1.0f) / D);             /* a1 (a0 = 1) */
+    outA_2x1->data[1] = ((1.0f - (constSQRT2 * C)) + (C * C)) / D; /* a2 */
 }
 
 static void vqf_filterInitialState(float x0, const matrix_t* b_3x1, const matrix_t* a_2x1, float* out2) {
@@ -252,9 +255,9 @@ static void vqf_filterInitialState(float x0, const matrix_t* b_3x1, const matrix
 
 static float vqf_filterStep(float x, const matrix_t* b_3x1, const matrix_t* a_2x1, float* state2) {
     /* Difference equations based on scipy.signal.lfilter documentation (a0 == 1) */
-    const float y = b_3x1->data[0] * x + state2[0];
-    state2[0] = b_3x1->data[1] * x - a_2x1->data[0] * y + state2[1];
-    state2[1] = b_3x1->data[2] * x - a_2x1->data[1] * y;
+    const float y = (b_3x1->data[0] * x) + state2[0];
+    state2[0] = ((b_3x1->data[1] * x) - (a_2x1->data[0] * y)) + state2[1];
+    state2[1] = (b_3x1->data[2] * x) - (a_2x1->data[1] * y);
     return y;
 }
 
@@ -265,36 +268,36 @@ static void vqf_filterVec(const matrix_t* x_Nx1, float tau, float Ts, const matr
     float* out = out_Nx1->data;
     const float* x = x_Nx1->data;
 
-    if (isnan(st[0])) {
+    if (isnan(st[0]) != 0) {
         /* Initialization phase: average the first samples for duration tau */
-        if (isnan(st[1])) {
+        if (isnan(st[1]) != 0) {
             st[1] = 0.0f; /* sample count */
             for (uint16_t i = 0; i < N; i++) {
-                st[2u + i] = 0.0f; /* sums */
+                st[2U + i] = 0.0f; /* sums */
             }
         }
 
         st[1] += 1.0f;
         for (uint16_t i = 0; i < N; i++) {
-            st[2u + i] += x[i];
-            out[i] = st[2u + i] / st[1];
+            st[2U + i] += x[i];
+            out[i] = st[2U + i] / st[1];
         }
 
-        if (st[1] * Ts >= tau) {
+        if ((st[1] * Ts) >= tau) {
             for (uint16_t i = 0; i < N; i++) {
-                vqf_filterInitialState(out[i], b_3x1, a_2x1, &st[2u * i]);
+                vqf_filterInitialState(out[i], b_3x1, a_2x1, &st[2U * i]);
             }
         }
         return;
     }
 
     for (uint16_t i = 0; i < N; i++) {
-        out[i] = vqf_filterStep(x[i], b_3x1, a_2x1, &st[2u * i]);
+        out[i] = vqf_filterStep(x[i], b_3x1, a_2x1, &st[2U * i]);
     }
 }
 
 static axis3f_t vqf_vecNormalize(axis3f_t v) {
-    const float n2 = v.x * v.x + v.y * v.y + v.z * v.z;
+    const float n2 = ((v.x * v.x) + (v.y * v.y)) + (v.z * v.z);
     if (n2 <= VQF_EPS) {
         return v;
     }
@@ -305,12 +308,12 @@ static axis3f_t vqf_vecNormalize(axis3f_t v) {
     return v;
 }
 
-static float vqf_vecNorm(axis3f_t v) { return SQRT(v.x * v.x + v.y * v.y + v.z * v.z); }
+static float vqf_vecNorm(axis3f_t v) { return SQRT(((v.x * v.x) + (v.y * v.y)) + (v.z * v.z)); }
 
 static axis3f_t vqf_quatRotateForward(const quaternion_t* q, axis3f_t v) {
     /* quaternionRotation() implements q_conj * v * q. To get q * v * q_conj, rotate with q_conj. */
     quaternion_t qc;
-    quaternionConj((quaternion_t*)q, &qc);
+    quaternionConj(q, &qc);
 
     quaternion_t qv;
     quaternion_t qo;
@@ -350,8 +353,8 @@ static void vqf_quatEnuToNed(const quaternion_t* q_enu, quaternion_t* q_ned) {
     qP.q3 = 0.0f;
 
     quaternion_t tmp;
-    quaternionMult((quaternion_t*)&qP, (quaternion_t*)q_enu, &tmp);
-    quaternionMult(&tmp, (quaternion_t*)&qP, q_ned);
+    quaternionMult(&qP, q_enu, &tmp);
+    quaternionMult(&tmp, &qP, q_ned);
     quaternionNorm(q_ned);
 }
 
@@ -366,9 +369,9 @@ static void vqf_initDefaultParams(AHRS_VQF_Params_t* p) {
     p->tauAcc = 3.0f;
     p->tauMag = 9.0f;
 
-    p->motionBiasEstEnabled = 1u;
-    p->restBiasEstEnabled = 1u;
-    p->magDistRejectionEnabled = 1u;
+    p->motionBiasEstEnabled = 1U;
+    p->restBiasEstEnabled = 1U;
+    p->magDistRejectionEnabled = 1U;
 
     p->biasSigmaInit = 0.5f;
     p->biasForgettingTime = 100.0f;
@@ -394,8 +397,8 @@ static void vqf_initDefaultParams(AHRS_VQF_Params_t* p) {
     p->magRejectionFactor = 2.0f;
 }
 
-static void vqf_updateCoeffs() {
-    AHRS_VQF_Params_t* p = &params;
+static void vqf_updateCoeffs(void) {
+    const AHRS_VQF_Params_t* p = &params;
     AHRS_VQF_Coeffs_t* c = &coeffs;
 
     vqf_filterCoeffs(p->tauAcc, configAHRS_VQF_LOOP_TIME_S, &c->accLpB, &c->accLpA);
@@ -406,11 +409,11 @@ static void vqf_updateCoeffs() {
     c->biasV = vqf_square(0.1f * 100.0f) * configAHRS_VQF_LOOP_TIME_S / p->biasForgettingTime;
 
     const float pMotion = vqf_square(p->biasSigmaMotion * 100.0f);
-    c->biasMotionW = vqf_square(pMotion) / c->biasV + pMotion;
+    c->biasMotionW = (vqf_square(pMotion) / c->biasV) + pMotion;
     c->biasVerticalW = c->biasMotionW / fmaxf(p->biasVerticalForgettingFactor, 1e-10f);
 
     const float pRest = vqf_square(p->biasSigmaRest * 100.0f);
-    c->biasRestW = vqf_square(pRest) / c->biasV + pRest;
+    c->biasRestW = (vqf_square(pRest) / c->biasV) + pRest;
 
     vqf_filterCoeffs(p->restFilterTau, configAHRS_VQF_LOOP_TIME_S, &c->restGyrLpB, &c->restGyrLpA);
     vqf_filterCoeffs(p->restFilterTau, configAHRS_VQF_LOOP_TIME_S, &c->restAccLpB, &c->restAccLpA);
@@ -424,7 +427,7 @@ static void vqf_updateCoeffs() {
     }
 }
 
-static void vqf_resetState() {
+static void vqf_resetState(void) {
     /* Quaternions */
     state.gyrQuat.q0 = 1.0f;
     state.gyrQuat.q1 = 0.0f;
@@ -438,8 +441,8 @@ static void vqf_resetState() {
 
     state.delta = 0.0f;
 
-    state.restDetected = 0u;
-    state.magDistDetected = 1u;
+    state.restDetected = 0U;
+    state.magDistDetected = 1U;
 
     state.lastAccLp.x = 0.0f;
     state.lastAccLp.y = 0.0f;
@@ -490,82 +493,82 @@ static void vqf_resetState() {
 
 /*------------------------------------Initialization--------------------------------------------*/
 
-void AHRS_VQF_Init() {
+void AHRS_VQF_Init(void) {
 
     vqf_initDefaultParams(&params);
 
     /* Allocate coefficient matrices */
-    matrixInit(&coeffs.accLpB, 3, 1);
-    matrixInit(&coeffs.accLpA, 2, 1);
-    matrixInit(&coeffs.restGyrLpB, 3, 1);
-    matrixInit(&coeffs.restGyrLpA, 2, 1);
-    matrixInit(&coeffs.restAccLpB, 3, 1);
-    matrixInit(&coeffs.restAccLpA, 2, 1);
-    matrixInit(&coeffs.magNormDipLpB, 3, 1);
-    matrixInit(&coeffs.magNormDipLpA, 2, 1);
+    (void)matrixInit(&coeffs.accLpB, 3, 1);
+    (void)matrixInit(&coeffs.accLpA, 2, 1);
+    (void)matrixInit(&coeffs.restGyrLpB, 3, 1);
+    (void)matrixInit(&coeffs.restGyrLpA, 2, 1);
+    (void)matrixInit(&coeffs.restAccLpB, 3, 1);
+    (void)matrixInit(&coeffs.restAccLpA, 2, 1);
+    (void)matrixInit(&coeffs.magNormDipLpB, 3, 1);
+    (void)matrixInit(&coeffs.magNormDipLpA, 2, 1);
 
     /* Allocate state matrices */
-    matrixInit(&state.accLpState, 3, 2);
-    matrixInit(&state.biasP, 3, 3);
-    matrixInit(&state.motionBiasEstRLpState, 9, 2);
-    matrixInit(&state.motionBiasEstBiasLpState, 2, 2);
-    matrixInit(&state.restLastSquaredDeviations, 2, 1);
-    matrixInit(&state.restGyrLpState, 3, 2);
-    matrixInit(&state.restAccLpState, 3, 2);
-    matrixInit(&state.magNormDip, 2, 1);
-    matrixInit(&state.magNormDipLpState, 2, 2);
+    (void)matrixInit(&state.accLpState, 3, 2);
+    (void)matrixInit(&state.biasP, 3, 3);
+    (void)matrixInit(&state.motionBiasEstRLpState, 9, 2);
+    (void)matrixInit(&state.motionBiasEstBiasLpState, 2, 2);
+    (void)matrixInit(&state.restLastSquaredDeviations, 2, 1);
+    (void)matrixInit(&state.restGyrLpState, 3, 2);
+    (void)matrixInit(&state.restAccLpState, 3, 2);
+    (void)matrixInit(&state.magNormDip, 2, 1);
+    (void)matrixInit(&state.magNormDipLpState, 2, 2);
 
     /* Allocate scratch matrices */
-    matrixInit(&_R, 3, 3);
-    matrixInit(&_TMP33a, 3, 3);
-    matrixInit(&_TMP33b, 3, 3);
-    matrixInit(&_TMP33c, 3, 3);
-    matrixInit(&_TMP33d, 3, 3);
-    matrixInit(&_TMP31a, 3, 1);
-    matrixInit(&_TMP31b, 3, 1);
-    matrixInit(&_TMP21a, 2, 1);
-    matrixInit(&_e, 3, 1);
+    (void)matrixInit(&_R, 3, 3);
+    (void)matrixInit(&_TMP33a, 3, 3);
+    (void)matrixInit(&_TMP33b, 3, 3);
+    (void)matrixInit(&_TMP33c, 3, 3);
+    (void)matrixInit(&_TMP33d, 3, 3);
+    (void)matrixInit(&_TMP31a, 3, 1);
+    (void)matrixInit(&_TMP31b, 3, 1);
+    (void)matrixInit(&_TMP21a, 2, 1);
+    (void)matrixInit(&_e, 3, 1);
 
     vqf_updateCoeffs();
     vqf_resetState();
 }
 
-void AHRS_VQF_Deinit() {
+void AHRS_VQF_Deinit(void) {
 
     /* Coeff matrices */
-    matrixDelete(&coeffs.accLpB);
-    matrixDelete(&coeffs.accLpA);
-    matrixDelete(&coeffs.restGyrLpB);
-    matrixDelete(&coeffs.restGyrLpA);
-    matrixDelete(&coeffs.restAccLpB);
-    matrixDelete(&coeffs.restAccLpA);
-    matrixDelete(&coeffs.magNormDipLpB);
-    matrixDelete(&coeffs.magNormDipLpA);
+    (void)matrixDelete(&coeffs.accLpB);
+    (void)matrixDelete(&coeffs.accLpA);
+    (void)matrixDelete(&coeffs.restGyrLpB);
+    (void)matrixDelete(&coeffs.restGyrLpA);
+    (void)matrixDelete(&coeffs.restAccLpB);
+    (void)matrixDelete(&coeffs.restAccLpA);
+    (void)matrixDelete(&coeffs.magNormDipLpB);
+    (void)matrixDelete(&coeffs.magNormDipLpA);
 
     /* State matrices */
-    matrixDelete(&state.accLpState);
-    matrixDelete(&state.biasP);
-    matrixDelete(&state.motionBiasEstRLpState);
-    matrixDelete(&state.motionBiasEstBiasLpState);
-    matrixDelete(&state.restLastSquaredDeviations);
-    matrixDelete(&state.restGyrLpState);
-    matrixDelete(&state.restAccLpState);
-    matrixDelete(&state.magNormDip);
-    matrixDelete(&state.magNormDipLpState);
+    (void)matrixDelete(&state.accLpState);
+    (void)matrixDelete(&state.biasP);
+    (void)matrixDelete(&state.motionBiasEstRLpState);
+    (void)matrixDelete(&state.motionBiasEstBiasLpState);
+    (void)matrixDelete(&state.restLastSquaredDeviations);
+    (void)matrixDelete(&state.restGyrLpState);
+    (void)matrixDelete(&state.restAccLpState);
+    (void)matrixDelete(&state.magNormDip);
+    (void)matrixDelete(&state.magNormDipLpState);
 
     /* Scratch matrices */
-    matrixDelete(&_R);
-    matrixDelete(&_TMP33a);
-    matrixDelete(&_TMP33b);
-    matrixDelete(&_TMP33c);
-    matrixDelete(&_TMP33d);
-    matrixDelete(&_TMP31a);
-    matrixDelete(&_TMP31b);
-    matrixDelete(&_TMP21a);
-    matrixDelete(&_e);
+    (void)matrixDelete(&_R);
+    (void)matrixDelete(&_TMP33a);
+    (void)matrixDelete(&_TMP33b);
+    (void)matrixDelete(&_TMP33c);
+    (void)matrixDelete(&_TMP33d);
+    (void)matrixDelete(&_TMP31a);
+    (void)matrixDelete(&_TMP31b);
+    (void)matrixDelete(&_TMP21a);
+    (void)matrixDelete(&_e);
 }
 
-void AHRS_VQF_Reset() {
+void AHRS_VQF_Reset(void) {
     vqf_updateCoeffs();
     vqf_resetState();
 }
@@ -586,14 +589,14 @@ void AHRS_VQF_updateGyro(axis3f_t gyro) {
         const float dx = gyr.x - state.restLastGyrLp.x;
         const float dy = gyr.y - state.restLastGyrLp.y;
         const float dz = gyr.z - state.restLastGyrLp.z;
-        state.restLastSquaredDeviations.data[0] = dx * dx + dy * dy + dz * dz;
+        state.restLastSquaredDeviations.data[0] = ((dx * dx) + (dy * dy)) + (dz * dz);
 
-        const float biasClipRad = params.biasClip * (constPI / 180.0f);
-        const float thGyrRad = params.restThGyr * (constPI / 180.0f);
-        if (state.restLastSquaredDeviations.data[0] >= thGyrRad * thGyrRad || fabsf(state.restLastGyrLp.x) > biasClipRad
-            || fabsf(state.restLastGyrLp.y) > biasClipRad || fabsf(state.restLastGyrLp.z) > biasClipRad) {
+        const float biasClipRad = DEG2RAD(params.biasClip);
+        const float thGyrRad = DEG2RAD(params.restThGyr);
+        if ((state.restLastSquaredDeviations.data[0] >= (thGyrRad * thGyrRad)) || (fabsf(state.restLastGyrLp.x) > biasClipRad)
+            || (fabsf(state.restLastGyrLp.y) > biasClipRad) || (fabsf(state.restLastGyrLp.z) > biasClipRad)) {
             state.restT = 0.0f;
-            state.restDetected = 0u;
+            state.restDetected = 0U;
         }
     }
 
@@ -625,12 +628,12 @@ void AHRS_VQF_updateAcc(axis3f_t acc) {
     const axis3f_t accBody = vqf_bodyNedToEnu(acc);
 
     /* Ignore [0 0 0] */
-    if (accBody.x == 0.0f && accBody.y == 0.0f && accBody.z == 0.0f) {
+    if ((accBody.x == 0.0f) && (accBody.y == 0.0f) && (accBody.z == 0.0f)) {
         return;
     }
 
     /* Rest detection based on accelerometer */
-    if (params.restBiasEstEnabled) {
+    if (params.restBiasEstEnabled != 0U) {
         matrix_t x = {(float*)&accBody, 3, 1};
         matrix_t out = {(float*)&state.restLastAccLp, 3, 1};
         vqf_filterVec(&x, params.restFilterTau, configAHRS_VQF_LOOP_TIME_S, &coeffs.restAccLpB, &coeffs.restAccLpA, &state.restAccLpState, &out);
@@ -638,15 +641,15 @@ void AHRS_VQF_updateAcc(axis3f_t acc) {
         const float dx = accBody.x - state.restLastAccLp.x;
         const float dy = accBody.y - state.restLastAccLp.y;
         const float dz = accBody.z - state.restLastAccLp.z;
-        state.restLastSquaredDeviations.data[1] = dx * dx + dy * dy + dz * dz;
+        state.restLastSquaredDeviations.data[1] = ((dx * dx) + (dy * dy)) + (dz * dz);
 
-        if (state.restLastSquaredDeviations.data[1] >= params.restThAcc * params.restThAcc) {
+        if (state.restLastSquaredDeviations.data[1] >= (params.restThAcc * params.restThAcc)) {
             state.restT = 0.0f;
-            state.restDetected = 0u;
+            state.restDetected = 0U;
         } else {
             state.restT += configAHRS_VQF_LOOP_TIME_S;
             if (state.restT >= params.restMinT) {
-                state.restDetected = 1u;
+                state.restDetected = 1U;
             }
         }
     }
@@ -685,7 +688,7 @@ void AHRS_VQF_updateAcc(axis3f_t acc) {
 
     /* Gyro bias estimation */
     if (params.motionBiasEstEnabled || params.restBiasEstEnabled) {
-        const float biasClipRad = params.biasClip * (constPI / 180.0f);
+        const float biasClipRad = DEG2RAD(params.biasClip);
 
         quaternion_t accGyrQuat;
         quaternionMult((quaternion_t*)&state.accQuat, (quaternion_t*)&state.gyrQuat, &accGyrQuat);
@@ -696,15 +699,15 @@ void AHRS_VQF_updateAcc(axis3f_t acc) {
         const float q2 = accGyrQuat.q2;
         const float q3 = accGyrQuat.q3;
 
-        ELEM(_R, 0, 0) = 1.0f - 2.0f * (q2 * q2 + q3 * q3);
-        ELEM(_R, 0, 1) = 2.0f * (q2 * q1 - q0 * q3);
-        ELEM(_R, 0, 2) = 2.0f * (q0 * q2 + q3 * q1);
-        ELEM(_R, 1, 0) = 2.0f * (q0 * q3 + q2 * q1);
-        ELEM(_R, 1, 1) = 1.0f - 2.0f * (q1 * q1 + q3 * q3);
-        ELEM(_R, 1, 2) = 2.0f * (q2 * q3 - q1 * q0);
-        ELEM(_R, 2, 0) = 2.0f * (q3 * q1 - q0 * q2);
-        ELEM(_R, 2, 1) = 2.0f * (q0 * q1 + q3 * q2);
-        ELEM(_R, 2, 2) = 1.0f - 2.0f * (q1 * q1 + q2 * q2);
+        ELEM(_R, 0, 0) = 1.0f - (2.0f * ((q2 * q2) + (q3 * q3)));
+        ELEM(_R, 0, 1) = 2.0f * ((q2 * q1) - (q0 * q3));
+        ELEM(_R, 0, 2) = 2.0f * ((q0 * q2) + (q3 * q1));
+        ELEM(_R, 1, 0) = 2.0f * ((q0 * q3) + (q2 * q1));
+        ELEM(_R, 1, 1) = 1.0f - (2.0f * ((q1 * q1) + (q3 * q3)));
+        ELEM(_R, 1, 2) = 2.0f * ((q2 * q3) - (q1 * q0));
+        ELEM(_R, 2, 0) = 2.0f * ((q3 * q1) - (q0 * q2));
+        ELEM(_R, 2, 1) = 2.0f * ((q0 * q1) + (q3 * q2));
+        ELEM(_R, 2, 2) = 1.0f - (2.0f * ((q1 * q1) + (q2 * q2)));
 
         /* biasLp = (R * bias)_{x,y} */
         matrix_t biasVec = {(float*)&state.bias, 3, 1};
@@ -727,7 +730,7 @@ void AHRS_VQF_updateAcc(axis3f_t acc) {
             w.x = coeffs.biasRestW;
             w.y = coeffs.biasRestW;
             w.z = coeffs.biasRestW;
-        } else if (params.motionBiasEstEnabled) {
+        } else if (params.motionBiasEstEnabled != 0U) {
             /* Recompute R*bias after filtering */
             matrixMult(&_R, &biasVec, &_TMP31a);
             _e.data[0] = -accEarth.y / configAHRS_VQF_LOOP_TIME_S + _TMP21a.data[0] - _TMP31a.data[0];
@@ -765,7 +768,7 @@ void AHRS_VQF_updateAcc(axis3f_t acc) {
             ELEM(_TMP33b, 0, 0) += w.x;
             ELEM(_TMP33b, 1, 1) += w.y;
             ELEM(_TMP33b, 2, 2) += w.z;
-            matrixInversed(&_TMP33b, &_TMP33c);       /* TMP33c = inv(...) */
+            (void)matrixInversed(&_TMP33b, &_TMP33c); /* TMP33c = inv(...) */
             matrixMult(&_TMP33a, &_TMP33c, &_TMP33d); /* TMP33d = K */
 
             /* Step 3: bias = bias + K e */
@@ -792,7 +795,7 @@ void AHRS_VQF_updateMag(axis3f_t mag) {
     /* Convert from body-NED to internal body-ENU */
     const axis3f_t magBody = vqf_bodyNedToEnu(mag);
 
-    if (magBody.x == 0.0f && magBody.y == 0.0f && magBody.z == 0.0f) {
+    if ((magBody.x == 0.0f) && (magBody.y == 0.0f) && (magBody.z == 0.0f)) {
         return;
     }
 
@@ -801,7 +804,7 @@ void AHRS_VQF_updateMag(axis3f_t mag) {
 
     axis3f_t magEarth = vqf_quatRotateForward(&accGyrQuat, magBody);
 
-    if (params.magDistRejectionEnabled) {
+    if (params.magDistRejectionEnabled != 0U) {
         const float norm = vqf_vecNorm(magEarth);
         state.magNormDip.data[0] = norm;
         state.magNormDip.data[1] = -asinf(CONSTRAIN(magEarth.z / fmaxf(norm, VQF_EPS), -1.0f, 1.0f));
@@ -815,23 +818,23 @@ void AHRS_VQF_updateMag(axis3f_t mag) {
         const float refNorm = state.magRefNorm;
         const float refDip = state.magRefDip;
 
-        if (refNorm > 0.0f && fabsf(state.magNormDip.data[0] - refNorm) < params.magNormTh * refNorm
-            && fabsf(state.magNormDip.data[1] - refDip) < params.magDipTh * (constPI / 180.0f)) {
+        if ((refNorm > 0.0f) && (fabsf(state.magNormDip.data[0] - refNorm) < (params.magNormTh * refNorm))
+            && (fabsf(state.magNormDip.data[1] - refDip) < (DEG2RAD(params.magDipTh)))) {
             state.magUndisturbedT += configAHRS_VQF_MAG_UPDATE_TIME_S;
             if (state.magUndisturbedT >= params.magMinUndisturbedTime) {
-                state.magDistDetected = 0u;
+                state.magDistDetected = 0U;
                 state.magRefNorm += coeffs.kMagRef * (state.magNormDip.data[0] - state.magRefNorm);
                 state.magRefDip += coeffs.kMagRef * (state.magNormDip.data[1] - state.magRefDip);
             }
         } else {
             state.magUndisturbedT = 0.0f;
-            state.magDistDetected = 1u;
+            state.magDistDetected = 1U;
         }
 
         /* New field acceptance */
-        if (state.magCandidateNorm > 0.0f && fabsf(state.magNormDip.data[0] - state.magCandidateNorm) < params.magNormTh * state.magCandidateNorm
-            && fabsf(state.magNormDip.data[1] - state.magCandidateDip) < params.magDipTh * (constPI / 180.0f)) {
-            if (vqf_vecNorm(state.restLastGyrLp) >= params.magNewMinGyr * (constPI / 180.0f)) {
+        if ((state.magCandidateNorm > 0.0f) && (fabsf(state.magNormDip.data[0] - state.magCandidateNorm) < (params.magNormTh * state.magCandidateNorm))
+            && (fabsf(state.magNormDip.data[1] - state.magCandidateDip) < (DEG2RAD(params.magDipTh)))) {
+            if (vqf_vecNorm(state.restLastGyrLp) >= (DEG2RAD(params.magNewMinGyr))) {
                 state.magCandidateT += configAHRS_VQF_MAG_UPDATE_TIME_S;
             }
 
@@ -839,10 +842,10 @@ void AHRS_VQF_updateMag(axis3f_t mag) {
             state.magCandidateDip += coeffs.kMagRef * (state.magNormDip.data[1] - state.magCandidateDip);
 
             if (state.magDistDetected
-                && (state.magCandidateT >= params.magNewTime || (state.magRefNorm == 0.0f && state.magCandidateT >= params.magNewFirstTime))) {
+                && ((state.magCandidateT >= params.magNewTime) || ((state.magRefNorm == 0.0f) && (state.magCandidateT >= params.magNewFirstTime)))) {
                 state.magRefNorm = state.magCandidateNorm;
                 state.magRefDip = state.magCandidateDip;
-                state.magDistDetected = 0u;
+                state.magDistDetected = 0U;
                 state.magUndisturbedT = params.magMinUndisturbedTime;
             }
         } else {
@@ -858,8 +861,8 @@ void AHRS_VQF_updateMag(axis3f_t mag) {
 
     float k = coeffs.kMag;
 
-    if (params.magDistRejectionEnabled) {
-        if (state.magDistDetected) {
+    if (params.magDistRejectionEnabled != 0U) {
+        if (state.magDistDetected != 0U) {
             if (state.magRejectT <= params.magMaxRejectionTime) {
                 state.magRejectT += configAHRS_VQF_MAG_UPDATE_TIME_S;
                 k = 0.0f;
@@ -867,7 +870,7 @@ void AHRS_VQF_updateMag(axis3f_t mag) {
                 k /= params.magRejectionFactor;
             }
         } else {
-            state.magRejectT = fmaxf(state.magRejectT - params.magRejectionFactor * configAHRS_VQF_MAG_UPDATE_TIME_S, 0.0f);
+            state.magRejectT = fmaxf(state.magRejectT - (params.magRejectionFactor * configAHRS_VQF_MAG_UPDATE_TIME_S), 0.0f);
         }
     }
 
@@ -878,13 +881,13 @@ void AHRS_VQF_updateMag(axis3f_t mag) {
         }
 
         state.kMagInit = state.kMagInit / (state.kMagInit + 1.0f);
-        if (state.kMagInit * params.tauMag < configAHRS_VQF_MAG_UPDATE_TIME_S) {
+        if ((state.kMagInit * params.tauMag) < configAHRS_VQF_MAG_UPDATE_TIME_S) {
             state.kMagInit = 0.0f;
         }
     }
 
     state.delta += k * state.lastMagDisAngle;
-    state.lastMagCorrAngularRate = k * state.lastMagDisAngle / configAHRS_VQF_MAG_UPDATE_TIME_S;
+    state.lastMagCorrAngularRate = (k * state.lastMagDisAngle) / configAHRS_VQF_MAG_UPDATE_TIME_S;
     state.delta = vqf_wrapPi(state.delta);
 }
 
@@ -894,7 +897,8 @@ void AHRS_VQF_Get6D(axis3f_t* angles) {
     if (!angles) {
         return;
     }
-    quaternion_t q_enu, q_ned;
+    quaternion_t q_enu;
+    quaternion_t q_ned;
     quaternionMult((quaternion_t*)&state.accQuat, (quaternion_t*)&state.gyrQuat, &q_enu);
     vqf_quatEnuToNed(&q_enu, &q_ned);
     quaternionToEuler(&q_ned, angles);
@@ -904,7 +908,8 @@ void AHRS_VQF_Get9D(axis3f_t* angles) {
     if (!angles) {
         return;
     }
-    quaternion_t q_enu, q_ned;
+    quaternion_t q_enu;
+    quaternion_t q_ned;
     quaternionMult((quaternion_t*)&state.accQuat, (quaternion_t*)&state.gyrQuat, &q_enu);
     vqf_applyDelta(&q_enu, state.delta);
     quaternionNorm(&q_enu);
@@ -912,20 +917,20 @@ void AHRS_VQF_Get9D(axis3f_t* angles) {
     quaternionToEuler(&q_ned, angles);
 }
 
-float AHRS_VQF_GetDelta() {
+float AHRS_VQF_GetDelta(void) {
     /* Convert +Up (ENU) to +Down (NED) */
     return -state.delta;
 }
 
 float AHRS_VQF_GetBiasEstimate(axis3f_t* bias_out) {
-    if (bias_out) {
+    if (bias_out != NULL) {
         *bias_out = vqf_bodyEnuToNed(state.bias);
     }
 
     /* Upper bound on max eigenvalue (Gershgorin) and clip to biasP0 */
-    const float sum1 = fabsf(ELEM(state.biasP, 0, 0)) + fabsf(ELEM(state.biasP, 0, 1)) + fabsf(ELEM(state.biasP, 0, 2));
-    const float sum2 = fabsf(ELEM(state.biasP, 1, 0)) + fabsf(ELEM(state.biasP, 1, 1)) + fabsf(ELEM(state.biasP, 1, 2));
-    const float sum3 = fabsf(ELEM(state.biasP, 2, 0)) + fabsf(ELEM(state.biasP, 2, 1)) + fabsf(ELEM(state.biasP, 2, 2));
+    const float sum1 = (fabsf(ELEM(state.biasP, 0, 0)) + fabsf(ELEM(state.biasP, 0, 1))) + fabsf(ELEM(state.biasP, 0, 2));
+    const float sum2 = (fabsf(ELEM(state.biasP, 1, 0)) + fabsf(ELEM(state.biasP, 1, 1))) + fabsf(ELEM(state.biasP, 1, 2));
+    const float sum3 = (fabsf(ELEM(state.biasP, 2, 0)) + fabsf(ELEM(state.biasP, 2, 1))) + fabsf(ELEM(state.biasP, 2, 2));
     const float P = fminf(fmaxf(fmaxf(sum1, sum2), sum3), coeffs.biasP0);
 
     /* Convert std from 0.01 deg/s to rad/s */
@@ -940,9 +945,9 @@ void AHRS_VQF_SetBiasEstimate(axis3f_t bias, float sigma) {
     }
 }
 
-uint8_t AHRS_VQF_GetRestDetected() { return state.restDetected; }
+uint8_t AHRS_VQF_GetRestDetected(void) { return state.restDetected; }
 
-uint8_t AHRS_VQF_GetMagDistDetected() { return state.magDistDetected; }
+uint8_t AHRS_VQF_GetMagDistDetected(void) { return state.magDistDetected; }
 
 void AHRS_VQF_SetMagRef(float norm, float dip_rad) {
     state.magRefNorm = norm;

@@ -32,8 +32,8 @@
 /* END Header */
 
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __IMU_MADGWICK_H__
-#define __IMU_MADGWICK_H__
+#ifndef IMU_MADGWICK_H
+#define IMU_MADGWICK_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -67,4 +67,4 @@ void IMU_Madgwick_update(axis3f_t* angles, axis3f_t accel, axis3f_t gyro);
 }
 #endif
 
-#endif /* __IMU_MADGWICK_H__ */
+#endif /* IMU_MADGWICK_H */
