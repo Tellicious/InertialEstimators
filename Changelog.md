@@ -1,7 +1,10 @@
 # Changelog
 
-## v3.0.1
+## v3.1.0
 
+**Improvements:**
+- Improved MISRA compliance
+  
 **Bugfix:**
 - Bugfix to quaternion-based filters
 
