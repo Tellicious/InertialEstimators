@@ -301,7 +301,7 @@ void AHRS_EKF_updateAccel(axis3f_t* angles, axis3f_t* velocities, axis3f_t accel
     matrixAdd(&_M, &_R_acc, &_M);
     //_K = _P * (~_C) * (!_M);
     matrixMult_rhsT(&_P, &_C_acc, &TMP1); //TMP1 contains _P * (~_C)
-    (void)matrixInversed(&_M, &TMP2);           //TMP2 contains (!_M)
+    (void)matrixInversed_SPD(&_M, &TMP2); //TMP2 contains (!_M)
     matrixMult(&TMP1, &TMP2, &_K);
 
     /* Correct state vector */
@@ -407,8 +407,8 @@ void AHRS_EKF_updateMag(axis3f_t* angles, axis3f_t* velocities, axis3f_t mag) {
     QuadProd(&_C_mag, &_P, &M_mag);
     matrixAdd(&M_mag, &_R_mag, &M_mag);
     //_K = _P * (~_C) * (!_M);
-    matrixMult_rhsT(&_P, &_C_mag, &TMP1_mag); //TMP1 contains _P * (~_C)
-    (void)matrixInversed(&M_mag, &TMP2_mag);        //TMP2 contains (!_M)
+    matrixMult_rhsT(&_P, &_C_mag, &TMP1_mag);    //TMP1 contains _P * (~_C)
+    (void)matrixInversed_SPD(&M_mag, &TMP2_mag); //TMP2 contains (!_M)
     matrixMult(&TMP1_mag, &TMP2_mag, &K_mag);
 
     /* Correct state vector */
@@ -472,8 +472,8 @@ void AHRS_EKF_updateVelXY(axis3f_t* angles, axis3f_t* velocities, float vx, floa
     QuadProd(&C_tmp, &_P, &_M);
     matrixAdd(&_M, &R_tmp, &_M);
     //_K = _P * (~C_tmp) * (!_M);
-    matrixMult_rhsT(&_P, &C_tmp, &TMP1); //TMP1 contains _P * (~_C)
-    (void)matrixInversed(&_M, &TMP2);          //TMP2 contains (!_M)
+    matrixMult_rhsT(&_P, &C_tmp, &TMP1);  //TMP1 contains _P * (~_C)
+    (void)matrixInversed_SPD(&_M, &TMP2); //TMP2 contains (!_M)
     matrixMult(&TMP1, &TMP2, &_K);
 
     /* Correct state vector */
@@ -615,8 +615,8 @@ void AHRS_EKF_updateVelNE(axis3f_t* angles, axis3f_t* velocities, float vN, floa
     QuadProd(&C_tmp, &_P, &_M);
     matrixAdd(&_M, &R_tmp, &_M);
     //_K = _P * (~C_tmp) * (!_M);
-    matrixMult_rhsT(&_P, &C_tmp, &TMP1); //TMP1 contains _P * (~_C)
-    (void)matrixInversed(&_M, &TMP2);          //TMP2 contains (!_M)
+    matrixMult_rhsT(&_P, &C_tmp, &TMP1);  //TMP1 contains _P * (~_C)
+    (void)matrixInversed_SPD(&_M, &TMP2); //TMP2 contains (!_M)
     matrixMult(&TMP1, &TMP2, &_K);
 
     /* Correct state vector */

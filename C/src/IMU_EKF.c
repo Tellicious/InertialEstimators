@@ -83,7 +83,7 @@ static void IMU_EKF_seedCovariance(void) {
 
 void IMU_EKF_init(axis3f_t* angles, axis3f_t* velocities) {
 
-    /* Initialize matrices (6-state: phi, theta, vx, vy, vz, c_damp; b_az removed) */
+    /* Initialize matrices (7-state: phi, theta, vx, vy, vz, c_damp, b_az) */
     (void)matrixInit(&IMU_EKF_u, IMU_EKF_STATE_SIZE, 1);
     (void)matrixInit(&_A, IMU_EKF_STATE_SIZE, IMU_EKF_STATE_SIZE);
     (void)matrixInit(&_B, IMU_EKF_STATE_SIZE, 6);
@@ -249,8 +249,8 @@ void IMU_EKF_updateAccel(axis3f_t* angles, axis3f_t* velocities, axis3f_t accel)
     QuadProd(&_C, &_P, &_M);
     matrixAdd(&_M, &_R, &_M);
     //_K = _P * (~_C) * (!_M);
-    matrixMult_rhsT(&_P, &_C, &TMP1); //TMP1 contains _P * (~_C)
-    (void)matrixInversed(&_M, &TMP2);       //TMP2 contains (!_M)
+    matrixMult_rhsT(&_P, &_C, &TMP1);     //TMP1 contains _P * (~_C)
+    (void)matrixInversed_SPD(&_M, &TMP2); //TMP2 contains (!_M)
     matrixMult(&TMP1, &TMP2, &_K);
 
     /* Correct state vector */
@@ -306,8 +306,8 @@ void IMU_EKF_updateVelXY(axis3f_t* angles, axis3f_t* velocities, float vx, float
     QuadProd(&C_tmp, &_P, &_M);
     matrixAdd(&_M, &R_tmp, &_M);
     //_K = _P * (~C_tmp) * (!_M);
-    matrixMult_rhsT(&_P, &C_tmp, &TMP1); //TMP1 contains _P * (~_C)
-    (void)matrixInversed(&_M, &TMP2);          //TMP2 contains (!_M)
+    matrixMult_rhsT(&_P, &C_tmp, &TMP1);  //TMP1 contains _P * (~_C)
+    (void)matrixInversed_SPD(&_M, &TMP2); //TMP2 contains (!_M)
     matrixMult(&TMP1, &TMP2, &_K);
 
     /* Correct state vector */
