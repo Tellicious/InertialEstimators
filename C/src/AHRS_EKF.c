@@ -262,8 +262,9 @@ void AHRS_EKF_prediction(float az, axis3f_t gyro) {
     ELEM(AHRS_EKF_u, 2, 0) += configAHRS_EKF_LOOP_TIME_S * tmp1 * inv_cTheta;
     float delta_u3 = configAHRS_EKF_LOOP_TIME_S
                      * ((ELEM(AHRS_EKF_u, 4, 0) * rr) - (ELEM(AHRS_EKF_u, 5, 0) * qr) - (ELEM(AHRS_EKF_u, 6, 0) * ELEM(AHRS_EKF_u, 3, 0)) - (constG * sTheta));
-    float delta_u4 = configAHRS_EKF_LOOP_TIME_S
-                     * ((ELEM(AHRS_EKF_u, 5, 0) * pr) - (ELEM(AHRS_EKF_u, 3, 0) * rr) - (ELEM(AHRS_EKF_u, 6, 0) * ELEM(AHRS_EKF_u, 4, 0)) + (constG * sPhi * cTheta));
+    float delta_u4 =
+        configAHRS_EKF_LOOP_TIME_S
+        * ((ELEM(AHRS_EKF_u, 5, 0) * pr) - (ELEM(AHRS_EKF_u, 3, 0) * rr) - (ELEM(AHRS_EKF_u, 6, 0) * ELEM(AHRS_EKF_u, 4, 0)) + (constG * sPhi * cTheta));
     float delta_u5 =
         configAHRS_EKF_LOOP_TIME_S * (az - ELEM(AHRS_EKF_u, 7, 0) + (constG * cPhi * cTheta) + (qr * ELEM(AHRS_EKF_u, 3, 0)) - (pr * ELEM(AHRS_EKF_u, 4, 0)));
     ELEM(AHRS_EKF_u, 3, 0) += delta_u3;
@@ -302,20 +303,27 @@ void AHRS_EKF_updateAccel(axis3f_t* angles, axis3f_t* velocities, axis3f_t accel
     //_K = _P * (~_C) * (!_M);
     matrixMult_rhsT(&_P, &_C_acc, &TMP1); //TMP1 contains _P * (~_C)
     (void)matrixInversed_SPD(&_M, &TMP2); //TMP2 contains (!_M)
-    matrixMult(&TMP1, &TMP2, &_K);
 
-    /* Correct state vector */
-    //u += _K * deltaM
-    matrixMult(&_K, &deltaM, &TMP3);
-    matrixAdd(&AHRS_EKF_u, &TMP3, &AHRS_EKF_u);
+    /* Innovation gate on NIS = νᵀM⁻¹ν */
+    float d0 = ELEM(deltaM, 0, 0);
+    float d1 = ELEM(deltaM, 1, 0);
+    float nis = (d0 * ((ELEM(TMP2, 0, 0) * d0) + (ELEM(TMP2, 0, 1) * d1))) + (d1 * ((ELEM(TMP2, 1, 0) * d0) + (ELEM(TMP2, 1, 1) * d1)));
+    if (nis <= configAHRS_EKF_NIS_GATE_2DOF) {
+        matrixMult(&TMP1, &TMP2, &_K);
 
-    /* Updated P matrix */
-    //_P -= _K * _C * _P;
-    //_P=(_P+(~_P))*0.5; //guarantees P to be symmetric
-    matrixMult(&_K, &_C_acc, &TMP4);
-    matrixMult(&TMP4, &_P, &TMP5);
-    matrixSub(&_P, &TMP5, &_P);
-    matrixSymmetric(&_P, &_P);
+        /* Correct state vector */
+        //u += _K * deltaM
+        matrixMult(&_K, &deltaM, &TMP3);
+        matrixAdd(&AHRS_EKF_u, &TMP3, &AHRS_EKF_u);
+
+        /* Updated P matrix */
+        //_P -= _K * _C * _P;
+        //_P=(_P+(~_P))*0.5; //guarantees P to be symmetric
+        matrixMult(&_K, &_C_acc, &TMP4);
+        matrixMult(&TMP4, &_P, &TMP5);
+        matrixSub(&_P, &TMP5, &_P);
+        matrixSymmetric(&_P, &_P);
+    }
 
     /* Set angles */
     angles->x = ELEM(AHRS_EKF_u, 0, 0);                    //u(0,0) is roll according to IMU ref. frame
@@ -409,20 +417,30 @@ void AHRS_EKF_updateMag(axis3f_t* angles, axis3f_t* velocities, axis3f_t mag) {
     //_K = _P * (~_C) * (!_M);
     matrixMult_rhsT(&_P, &_C_mag, &TMP1_mag);    //TMP1 contains _P * (~_C)
     (void)matrixInversed_SPD(&M_mag, &TMP2_mag); //TMP2 contains (!_M)
-    matrixMult(&TMP1_mag, &TMP2_mag, &K_mag);
 
-    /* Correct state vector */
-    //u += _K * deltaM
-    matrixMult(&K_mag, &deltaM, &TMP3);
-    matrixAdd(&AHRS_EKF_u, &TMP3, &AHRS_EKF_u);
+    /* Innovation gate on NIS = νᵀM⁻¹ν */
+    float d0 = ELEM(deltaM, 0, 0);
+    float d1 = ELEM(deltaM, 1, 0);
+    float d2 = ELEM(deltaM, 2, 0);
+    float nis = (d0 * ((ELEM(TMP2_mag, 0, 0) * d0) + (ELEM(TMP2_mag, 0, 1) * d1) + (ELEM(TMP2_mag, 0, 2) * d2)))
+                + (d1 * ((ELEM(TMP2_mag, 1, 0) * d0) + (ELEM(TMP2_mag, 1, 1) * d1) + (ELEM(TMP2_mag, 1, 2) * d2)))
+                + (d2 * ((ELEM(TMP2_mag, 2, 0) * d0) + (ELEM(TMP2_mag, 2, 1) * d1) + (ELEM(TMP2_mag, 2, 2) * d2)));
+    if (nis <= configAHRS_EKF_NIS_GATE_3DOF) {
+        matrixMult(&TMP1_mag, &TMP2_mag, &K_mag);
 
-    /* Updated P matrix */
-    //_P -= _K * _C * _P;
-    //_P=(_P+(~_P))*0.5; //guarantees P to be symmetric
-    matrixMult(&K_mag, &_C_mag, &TMP4);
-    matrixMult(&TMP4, &_P, &TMP5);
-    matrixSub(&_P, &TMP5, &_P);
-    matrixSymmetric(&_P, &_P);
+        /* Correct state vector */
+        //u += _K * deltaM
+        matrixMult(&K_mag, &deltaM, &TMP3);
+        matrixAdd(&AHRS_EKF_u, &TMP3, &AHRS_EKF_u);
+
+        /* Updated P matrix */
+        //_P -= _K * _C * _P;
+        //_P=(_P+(~_P))*0.5; //guarantees P to be symmetric
+        matrixMult(&K_mag, &_C_mag, &TMP4);
+        matrixMult(&TMP4, &_P, &TMP5);
+        matrixSub(&_P, &TMP5, &_P);
+        matrixSymmetric(&_P, &_P);
+    }
 
     /* Set angles */
     angles->x = ELEM(AHRS_EKF_u, 0, 0);                    //u(0,0) is roll according to IMU ref. frame
@@ -474,20 +492,27 @@ void AHRS_EKF_updateVelXY(axis3f_t* angles, axis3f_t* velocities, float vx, floa
     //_K = _P * (~C_tmp) * (!_M);
     matrixMult_rhsT(&_P, &C_tmp, &TMP1);  //TMP1 contains _P * (~_C)
     (void)matrixInversed_SPD(&_M, &TMP2); //TMP2 contains (!_M)
-    matrixMult(&TMP1, &TMP2, &_K);
 
-    /* Correct state vector */
-    //u += _K * deltaM;
-    matrixMult(&_K, &deltaM, &TMP3);
-    matrixAdd(&AHRS_EKF_u, &TMP3, &AHRS_EKF_u);
+    /* Innovation gate on NIS = νᵀM⁻¹ν */
+    float d0 = ELEM(deltaM, 0, 0);
+    float d1 = ELEM(deltaM, 1, 0);
+    float nis = (d0 * ((ELEM(TMP2, 0, 0) * d0) + (ELEM(TMP2, 0, 1) * d1))) + (d1 * ((ELEM(TMP2, 1, 0) * d0) + (ELEM(TMP2, 1, 1) * d1)));
+    if (nis <= configAHRS_EKF_NIS_GATE_2DOF) {
+        matrixMult(&TMP1, &TMP2, &_K);
 
-    /* Updated P matrix */
-    //_P -= _K * C_tmp * _P;
-    //_P=(_P+(~_P))*0.5; //guarantees P to be symmetric
-    matrixMult(&_K, &C_tmp, &TMP4);
-    matrixMult(&TMP4, &_P, &TMP5);
-    matrixSub(&_P, &TMP5, &_P);
-    matrixSymmetric(&_P, &_P);
+        /* Correct state vector */
+        //u += _K * deltaM;
+        matrixMult(&_K, &deltaM, &TMP3);
+        matrixAdd(&AHRS_EKF_u, &TMP3, &AHRS_EKF_u);
+
+        /* Updated P matrix */
+        //_P -= _K * C_tmp * _P;
+        //_P=(_P+(~_P))*0.5; //guarantees P to be symmetric
+        matrixMult(&_K, &C_tmp, &TMP4);
+        matrixMult(&TMP4, &_P, &TMP5);
+        matrixSub(&_P, &TMP5, &_P);
+        matrixSymmetric(&_P, &_P);
+    }
 
     /* Set angles */
     angles->x = ELEM(AHRS_EKF_u, 0, 0);                    //u(0,0) is roll according to IMU ref. frame
@@ -529,22 +554,27 @@ void AHRS_EKF_updateVelZ(axis3f_t* angles, axis3f_t* velocities, float vz, float
 
     /* Faster Gain matrix K */
     float inv_m = 1.0f / (ELEM(_P, 5, 5) + (_r_vz / dt_s));
-    for (uint8_t i = 0; i < _P.rows; i++) {
-        ELEM(K, i, 0) = ELEM(_P, i, 5) * inv_m;
+
+    /* Innovation gate on NIS = νᵀM⁻¹ν */
+    float nis = (deltaM * deltaM) * inv_m;
+    if (nis <= configAHRS_EKF_NIS_GATE_1DOF) {
+        for (uint8_t i = 0; i < _P.rows; i++) {
+            ELEM(K, i, 0) = ELEM(_P, i, 5) * inv_m;
+        }
+
+        /* Correct state vector */
+        //u += K * deltaM;
+        matrixMultScalar(&K, deltaM, &TMP3);
+        matrixAdd(&AHRS_EKF_u, &TMP3, &AHRS_EKF_u);
+
+        /* Updated P matrix */
+        //_P -= K * C_tmp * _P;
+        //_P=(_P+(~_P))*0.5; //guarantees P to be symmetric
+        matrixMult(&K, &C_tmp, &TMP4);
+        matrixMult(&TMP4, &_P, &TMP5);
+        matrixSub(&_P, &TMP5, &_P);
+        matrixSymmetric(&_P, &_P);
     }
-
-    /* Correct state vector */
-    //u += K * deltaM;
-    matrixMultScalar(&K, deltaM, &TMP3);
-    matrixAdd(&AHRS_EKF_u, &TMP3, &AHRS_EKF_u);
-
-    /* Updated P matrix */
-    //_P -= K * C_tmp * _P;
-    //_P=(_P+(~_P))*0.5; //guarantees P to be symmetric
-    matrixMult(&K, &C_tmp, &TMP4);
-    matrixMult(&TMP4, &_P, &TMP5);
-    matrixSub(&_P, &TMP5, &_P);
-    matrixSymmetric(&_P, &_P);
 
     /* Set angles */
     angles->x = ELEM(AHRS_EKF_u, 0, 0);                    //u(0,0) is roll according to IMU ref. frame
@@ -594,13 +624,15 @@ void AHRS_EKF_updateVelNE(axis3f_t* angles, axis3f_t* velocities, float vN, floa
     float tmp3 = (cPhi * sPsi) - (cPsi * sPhi * sTheta);
     float tmp4 = (cPsi * sPhi) - (cPhi * sPsi * sTheta);
     ELEM(C_tmp, 0, 0) = (ELEM(AHRS_EKF_u, 4, 0) * tmp1) + (ELEM(AHRS_EKF_u, 5, 0) * tmp3);
-    ELEM(C_tmp, 0, 1) = (ELEM(AHRS_EKF_u, 5, 0) * cPhi * cPsi * cTheta) - (ELEM(AHRS_EKF_u, 3, 0) * cPsi * sTheta) + (ELEM(AHRS_EKF_u, 4, 0) * cPsi * cTheta * sPhi);
+    ELEM(C_tmp, 0, 1) =
+        (ELEM(AHRS_EKF_u, 5, 0) * cPhi * cPsi * cTheta) - (ELEM(AHRS_EKF_u, 3, 0) * cPsi * sTheta) + (ELEM(AHRS_EKF_u, 4, 0) * cPsi * cTheta * sPhi);
     ELEM(C_tmp, 0, 2) = (ELEM(AHRS_EKF_u, 5, 0) * tmp4) - (ELEM(AHRS_EKF_u, 4, 0) * tmp2) - (ELEM(AHRS_EKF_u, 3, 0) * cTheta * sPsi);
     ELEM(C_tmp, 0, 3) = cPsi * cTheta;
     ELEM(C_tmp, 0, 4) = -tmp3;
     ELEM(C_tmp, 0, 5) = tmp1;
     ELEM(C_tmp, 1, 0) = (-ELEM(AHRS_EKF_u, 4, 0) * tmp4) - (ELEM(AHRS_EKF_u, 5, 0) * tmp2);
-    ELEM(C_tmp, 1, 1) = (ELEM(AHRS_EKF_u, 5, 0) * cPhi * cTheta * sPsi) - (ELEM(AHRS_EKF_u, 3, 0) * sPsi * sTheta) + (ELEM(AHRS_EKF_u, 4, 0) * cTheta * sPhi * sPsi);
+    ELEM(C_tmp, 1, 1) =
+        (ELEM(AHRS_EKF_u, 5, 0) * cPhi * cTheta * sPsi) - (ELEM(AHRS_EKF_u, 3, 0) * sPsi * sTheta) + (ELEM(AHRS_EKF_u, 4, 0) * cTheta * sPhi * sPsi);
     ELEM(C_tmp, 1, 2) = (ELEM(AHRS_EKF_u, 5, 0) * tmp1) - (ELEM(AHRS_EKF_u, 4, 0) * tmp3) + (ELEM(AHRS_EKF_u, 3, 0) * cPsi * cTheta);
     ELEM(C_tmp, 1, 3) = cTheta * sPsi;
     ELEM(C_tmp, 1, 4) = tmp2;
@@ -617,20 +649,27 @@ void AHRS_EKF_updateVelNE(axis3f_t* angles, axis3f_t* velocities, float vN, floa
     //_K = _P * (~C_tmp) * (!_M);
     matrixMult_rhsT(&_P, &C_tmp, &TMP1);  //TMP1 contains _P * (~_C)
     (void)matrixInversed_SPD(&_M, &TMP2); //TMP2 contains (!_M)
-    matrixMult(&TMP1, &TMP2, &_K);
 
-    /* Correct state vector */
-    //u += _K * deltaM;
-    matrixMult(&_K, &deltaM, &TMP3);
-    matrixAdd(&AHRS_EKF_u, &TMP3, &AHRS_EKF_u);
+    /* Innovation gate on NIS = νᵀM⁻¹ν */
+    float d0 = ELEM(deltaM, 0, 0);
+    float d1 = ELEM(deltaM, 1, 0);
+    float nis = (d0 * ((ELEM(TMP2, 0, 0) * d0) + (ELEM(TMP2, 0, 1) * d1))) + (d1 * ((ELEM(TMP2, 1, 0) * d0) + (ELEM(TMP2, 1, 1) * d1)));
+    if (nis <= configAHRS_EKF_NIS_GATE_2DOF) {
+        matrixMult(&TMP1, &TMP2, &_K);
 
-    /* Updated P matrix */
-    //_P -= _K * C_tmp * _P;
-    //_P=(_P+(~_P))*0.5; //guarantees P to be symmetric
-    matrixMult(&_K, &C_tmp, &TMP4);
-    matrixMult(&TMP4, &_P, &TMP5);
-    matrixSub(&_P, &TMP5, &_P);
-    matrixSymmetric(&_P, &_P);
+        /* Correct state vector */
+        //u += _K * deltaM;
+        matrixMult(&_K, &deltaM, &TMP3);
+        matrixAdd(&AHRS_EKF_u, &TMP3, &AHRS_EKF_u);
+
+        /* Updated P matrix */
+        //_P -= _K * C_tmp * _P;
+        //_P=(_P+(~_P))*0.5; //guarantees P to be symmetric
+        matrixMult(&_K, &C_tmp, &TMP4);
+        matrixMult(&TMP4, &_P, &TMP5);
+        matrixSub(&_P, &TMP5, &_P);
+        matrixSymmetric(&_P, &_P);
+    }
 
     /* Set angles */
     angles->x = ELEM(AHRS_EKF_u, 0, 0);                    //u(0,0) is roll according to IMU ref. frame
@@ -684,21 +723,26 @@ void AHRS_EKF_updateVelD(axis3f_t* angles, axis3f_t* velocities, float vD, float
     QuadProd(&C_tmp, &_P, &M);
     ELEM(M, 0, 0) += (_r_vd / dt_s);
     //K = _P * (~C_tmp) * (!_M);
-    matrixMult_rhsT(&_P, &C_tmp, &K);
-    matrixMultScalar(&K, 1.0f / ELEM(M, 0, 0), &K);
 
-    /* Correct state vector */
-    //u += K * deltaM;
-    matrixMultScalar(&K, deltaM, &TMP3);
-    matrixAdd(&AHRS_EKF_u, &TMP3, &AHRS_EKF_u);
+    /* Innovation gate on NIS = νᵀM⁻¹ν */
+    float nis = (deltaM * deltaM) / ELEM(M, 0, 0);
+    if (nis <= configAHRS_EKF_NIS_GATE_1DOF) {
+        matrixMult_rhsT(&_P, &C_tmp, &K);
+        matrixMultScalar(&K, 1.0f / ELEM(M, 0, 0), &K);
 
-    /* Updated P matrix */
-    //_P -= _K * C_tmp * _P;
-    //_P=(_P+(~_P))*0.5; //guarantees P to be symmetric
-    matrixMult(&K, &C_tmp, &TMP4);
-    matrixMult(&TMP4, &_P, &TMP5);
-    matrixSub(&_P, &TMP5, &_P);
-    matrixSymmetric(&_P, &_P);
+        /* Correct state vector */
+        //u += K * deltaM;
+        matrixMultScalar(&K, deltaM, &TMP3);
+        matrixAdd(&AHRS_EKF_u, &TMP3, &AHRS_EKF_u);
+
+        /* Updated P matrix */
+        //_P -= _K * C_tmp * _P;
+        //_P=(_P+(~_P))*0.5; //guarantees P to be symmetric
+        matrixMult(&K, &C_tmp, &TMP4);
+        matrixMult(&TMP4, &_P, &TMP5);
+        matrixSub(&_P, &TMP5, &_P);
+        matrixSymmetric(&_P, &_P);
+    }
 
     /* Set angles */
     angles->x = ELEM(AHRS_EKF_u, 0, 0);                    //u(0,0) is roll according to IMU ref. frame

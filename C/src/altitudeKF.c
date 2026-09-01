@@ -355,7 +355,7 @@ void altitudeKF_init(altitudeState_t* altState, float pressGround, float tempGro
     /* Calculation of K = A*P*C.'*inverse(C*H*C.'+R); */
     QuadProd(&C, &P, &tmp3);
     matrixAdd(&tmp3, &R, &tmp3);
-    (void)matrixInversed(&tmp3, &tmp4);
+    (void)matrixInversed_SPD(&tmp3, &tmp4);
     matrixMult(&A, &P, &tmp1);
     matrixMult_rhsT(&tmp1, &C, &tmp2);
     matrixMult(&tmp2, &tmp4, &K);

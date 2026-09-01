@@ -251,20 +251,27 @@ void IMU_EKF_updateAccel(axis3f_t* angles, axis3f_t* velocities, axis3f_t accel)
     //_K = _P * (~_C) * (!_M);
     matrixMult_rhsT(&_P, &_C, &TMP1);     //TMP1 contains _P * (~_C)
     (void)matrixInversed_SPD(&_M, &TMP2); //TMP2 contains (!_M)
-    matrixMult(&TMP1, &TMP2, &_K);
 
-    /* Correct state vector */
-    //u += _K * deltaM
-    matrixMult(&_K, &deltaM, &TMP3);
-    matrixAdd(&IMU_EKF_u, &TMP3, &IMU_EKF_u);
+    /* Innovation gate on NIS = νᵀM⁻¹ν */
+    float d0 = ELEM(deltaM, 0, 0);
+    float d1 = ELEM(deltaM, 1, 0);
+    float nis = (d0 * ((ELEM(TMP2, 0, 0) * d0) + (ELEM(TMP2, 0, 1) * d1))) + (d1 * ((ELEM(TMP2, 1, 0) * d0) + (ELEM(TMP2, 1, 1) * d1)));
+    if (nis <= configIMU_EKF_NIS_GATE_2DOF) {
+        matrixMult(&TMP1, &TMP2, &_K);
 
-    /* Updated P matrix */
-    //_P -= _K * _C * _P;
-    //_P=(_P+(~_P))*0.5; //guarantees P to be symmetric
-    matrixMult(&_K, &_C, &TMP4);
-    matrixMult(&TMP4, &_P, &TMP5);
-    matrixSub(&_P, &TMP5, &_P);
-    matrixSymmetric(&_P, &_P);
+        /* Correct state vector */
+        //u += _K * deltaM
+        matrixMult(&_K, &deltaM, &TMP3);
+        matrixAdd(&IMU_EKF_u, &TMP3, &IMU_EKF_u);
+
+        /* Updated P matrix */
+        //_P -= _K * _C * _P;
+        //_P=(_P+(~_P))*0.5; //guarantees P to be symmetric
+        matrixMult(&_K, &_C, &TMP4);
+        matrixMult(&TMP4, &_P, &TMP5);
+        matrixSub(&_P, &TMP5, &_P);
+        matrixSymmetric(&_P, &_P);
+    }
 
     /* Set angles */
     angles->x = matrixGet(&IMU_EKF_u, 0, 0); //u(0,0) is roll according to IMU ref. frame
@@ -308,20 +315,27 @@ void IMU_EKF_updateVelXY(axis3f_t* angles, axis3f_t* velocities, float vx, float
     //_K = _P * (~C_tmp) * (!_M);
     matrixMult_rhsT(&_P, &C_tmp, &TMP1);  //TMP1 contains _P * (~_C)
     (void)matrixInversed_SPD(&_M, &TMP2); //TMP2 contains (!_M)
-    matrixMult(&TMP1, &TMP2, &_K);
 
-    /* Correct state vector */
-    //u += _K * deltaM;
-    matrixMult(&_K, &deltaM, &TMP3);
-    matrixAdd(&IMU_EKF_u, &TMP3, &IMU_EKF_u);
+    /* Innovation gate on NIS = νᵀM⁻¹ν */
+    float d0 = ELEM(deltaM, 0, 0);
+    float d1 = ELEM(deltaM, 1, 0);
+    float nis = (d0 * ((ELEM(TMP2, 0, 0) * d0) + (ELEM(TMP2, 0, 1) * d1))) + (d1 * ((ELEM(TMP2, 1, 0) * d0) + (ELEM(TMP2, 1, 1) * d1)));
+    if (nis <= configIMU_EKF_NIS_GATE_2DOF) {
+        matrixMult(&TMP1, &TMP2, &_K);
 
-    /* Updated P matrix */
-    //_P -= _K * C_tmp * _P;
-    //_P=(_P+(~_P))*0.5; //guarantees P to be symmetric
-    matrixMult(&_K, &C_tmp, &TMP4);
-    matrixMult(&TMP4, &_P, &TMP5);
-    matrixSub(&_P, &TMP5, &_P);
-    matrixSymmetric(&_P, &_P);
+        /* Correct state vector */
+        //u += _K * deltaM;
+        matrixMult(&_K, &deltaM, &TMP3);
+        matrixAdd(&IMU_EKF_u, &TMP3, &IMU_EKF_u);
+
+        /* Updated P matrix */
+        //_P -= _K * C_tmp * _P;
+        //_P=(_P+(~_P))*0.5; //guarantees P to be symmetric
+        matrixMult(&_K, &C_tmp, &TMP4);
+        matrixMult(&TMP4, &_P, &TMP5);
+        matrixSub(&_P, &TMP5, &_P);
+        matrixSymmetric(&_P, &_P);
+    }
 
     /* Set angles */
     angles->x = matrixGet(&IMU_EKF_u, 0, 0); //u(0,0) is roll according to IMU ref. frame
@@ -359,22 +373,27 @@ void IMU_EKF_updateVelZ(axis3f_t* angles, axis3f_t* velocities, float vz, float 
 
     /* Faster Gain matrix K */
     float inv_m = 1.0f / (ELEM(_P, 4, 4) + (_r_vz / dt_s));
-    for (uint8_t i = 0; i < _P.rows; i++) {
-        ELEM(K, i, 0) = ELEM(_P, i, 4) * inv_m;
+
+    /* Innovation gate on NIS = νᵀM⁻¹ν */
+    float nis = (deltaM * deltaM) * inv_m;
+    if (nis <= configIMU_EKF_NIS_GATE_1DOF) {
+        for (uint8_t i = 0; i < _P.rows; i++) {
+            ELEM(K, i, 0) = ELEM(_P, i, 4) * inv_m;
+        }
+
+        /* Correct state vector */
+        //u += K * deltaM;
+        matrixMultScalar(&K, deltaM, &TMP3);
+        matrixAdd(&IMU_EKF_u, &TMP3, &IMU_EKF_u);
+
+        /* Updated P matrix */
+        //_P -= K * C_tmp * _P;
+        //_P=(_P+(~_P))*0.5; //guarantees P to be symmetric
+        matrixMult(&K, &C_tmp, &TMP4);
+        matrixMult(&TMP4, &_P, &TMP5);
+        matrixSub(&_P, &TMP5, &_P);
+        matrixSymmetric(&_P, &_P);
     }
-
-    /* Correct state vector */
-    //u += K * deltaM;
-    matrixMultScalar(&K, deltaM, &TMP3);
-    matrixAdd(&IMU_EKF_u, &TMP3, &IMU_EKF_u);
-
-    /* Updated P matrix */
-    //_P -= K * C_tmp * _P;
-    //_P=(_P+(~_P))*0.5; //guarantees P to be symmetric
-    matrixMult(&K, &C_tmp, &TMP4);
-    matrixMult(&TMP4, &_P, &TMP5);
-    matrixSub(&_P, &TMP5, &_P);
-    matrixSymmetric(&_P, &_P);
 
     /* Set angles */
     angles->x = matrixGet(&IMU_EKF_u, 0, 0); //u(0,0) is roll according to IMU ref. frame
@@ -421,22 +440,27 @@ void IMU_EKF_updateVelD(axis3f_t* angles, axis3f_t* velocities, float vD, float 
     //_M = QuadProd(C_tmp,_P) + (_r_vd / dt_s);
     QuadProd(&C_tmp, &_P, &M);
     ELEM(M, 0, 0) += (_r_vd / dt_s);
-    //K = _P * (~C_tmp) * (!_M);
-    matrixMult_rhsT(&_P, &C_tmp, &K);
-    matrixMultScalar(&K, 1.0f / ELEM(M, 0, 0), &K);
 
-    /* Correct state vector */
-    //u += K * deltaM;
-    matrixMultScalar(&K, deltaM, &TMP3);
-    matrixAdd(&IMU_EKF_u, &TMP3, &IMU_EKF_u);
+    /* Innovation gate on NIS = νᵀM⁻¹ν */
+    float nis = (deltaM * deltaM) / ELEM(M, 0, 0);
+    if (nis <= configIMU_EKF_NIS_GATE_1DOF) {
+        //K = _P * (~C_tmp) * (!_M);
+        matrixMult_rhsT(&_P, &C_tmp, &K);
+        matrixMultScalar(&K, 1.0f / ELEM(M, 0, 0), &K);
 
-    /* Updated P matrix */
-    //_P -= _K * C_tmp * _P;
-    //_P=(_P+(~_P))*0.5; //guarantees P to be symmetric
-    matrixMult(&K, &C_tmp, &TMP4);
-    matrixMult(&TMP4, &_P, &TMP5);
-    matrixSub(&_P, &TMP5, &_P);
-    matrixSymmetric(&_P, &_P);
+        /* Correct state vector */
+        //u += K * deltaM;
+        matrixMultScalar(&K, deltaM, &TMP3);
+        matrixAdd(&IMU_EKF_u, &TMP3, &IMU_EKF_u);
+
+        /* Updated P matrix */
+        //_P -= _K * C_tmp * _P;
+        //_P=(_P+(~_P))*0.5; //guarantees P to be symmetric
+        matrixMult(&K, &C_tmp, &TMP4);
+        matrixMult(&TMP4, &_P, &TMP5);
+        matrixSub(&_P, &TMP5, &_P);
+        matrixSymmetric(&_P, &_P);
+    }
 
     /* Set angles */
     angles->x = matrixGet(&IMU_EKF_u, 0, 0); //u(0,0) is roll according to IMU ref. frame

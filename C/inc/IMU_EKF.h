@@ -161,6 +161,21 @@ extern "C" {
 #define configIMU_EKF_C_THETA_MIN 1e-3f
 #endif
 
+/* Normalized Innovation Squared gate for 1 DoF (default to 99% of chi-square distribution) */
+#ifndef configIMU_EKF_NIS_GATE_1DOF
+#define configIMU_EKF_NIS_GATE_1DOF 10.83f
+#endif
+
+/* Normalized Innovation Squared gate for 2 DoF (default to 99% of chi-square distribution) */
+#ifndef configIMU_EKF_NIS_GATE_2DOF
+#define configIMU_EKF_NIS_GATE_2DOF 13.82f
+#endif
+
+/* Normalized Innovation Squared gate for 3 DoF (default to 99% of chi-square distribution) */
+#ifndef configIMU_EKF_NIS_GATE_3DOF
+#define configIMU_EKF_NIS_GATE_3DOF 16.27f
+#endif
+
 /* Number of elements of the EKF state vector */
 #define IMU_EKF_STATE_SIZE 7U
 
