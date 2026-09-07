@@ -421,10 +421,10 @@ void IMU_EKF_updateVelD(axis3f_t* angles, axis3f_t* velocities, float vD, float 
     (void)matrixInit(&M, 1, 1);
 
     /* Trig functions */
-    float sPhi = SIN(ELEM(IMU_EKF_u, 0, 0));
-    float cPhi = COS(ELEM(IMU_EKF_u, 0, 0));
-    float sTheta = SIN(ELEM(IMU_EKF_u, 1, 0));
-    float cTheta = COS(ELEM(IMU_EKF_u, 1, 0));
+    const float sPhi = SIN(ELEM(IMU_EKF_u, 0, 0));
+    const float cPhi = COS(ELEM(IMU_EKF_u, 0, 0));
+    const float sTheta = SIN(ELEM(IMU_EKF_u, 1, 0));
+    const float cTheta = COS(ELEM(IMU_EKF_u, 1, 0));
 
     /* C matrix */
     ELEM(C_tmp, 0, 0) = ((ELEM(IMU_EKF_u, 3, 0) * cPhi) * cTheta) - ((ELEM(IMU_EKF_u, 4, 0) * cTheta) * sPhi);
@@ -434,7 +434,7 @@ void IMU_EKF_updateVelD(axis3f_t* angles, axis3f_t* velocities, float vD, float 
     ELEM(C_tmp, 0, 4) = cPhi * cTheta;
 
     /* Delta measures */
-    float deltaM = vD - (((((ELEM(IMU_EKF_u, 4, 0) * cPhi) * cTheta) - (ELEM(IMU_EKF_u, 2, 0) * sTheta)) + (ELEM(IMU_EKF_u, 3, 0) * cTheta)) * sPhi);
+    float deltaM = vD - ((-ELEM(IMU_EKF_u, 2, 0) * sTheta) + (ELEM(IMU_EKF_u, 3, 0) * sPhi * cTheta) + (ELEM(IMU_EKF_u, 4, 0) * cPhi * cTheta));
 
     /* Gain matrix K */
     //_M = QuadProd(C_tmp,_P) + (_r_vd / dt_s);
