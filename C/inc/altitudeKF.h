@@ -47,19 +47,29 @@ extern "C" {
 /* Configuration -------------------------------------------------------------*/
 
 /* Choose whether to use accurate or approximate altitude calculation based on ISA conditions */
-// #define configALTITUDE_KF_USE_APPROX_ALTITUDE
+#ifndef configENABLE_ALTITUDE_KF_APPROX_ALTITUDE_CALCULATION
+#define configENABLE_ALTITUDE_KF_APPROX_ALTITUDE_CALCULATION 0
+#endif
 
 /* Choose whether to use accelerometer high-pass filtering */
-// #define configALTITUDE_KF_ACC_HP_FILTER
+#ifndef configENABLE_ALTITUDE_KF_ACC_HP_FILTER
+#define configENABLE_ALTITUDE_KF_ACC_HP_FILTER 0
+#endif
 
 /* Choose whether to detect and correct ground effect */
-// #define configALTITUDE_KF_DETECT_GROUND_EFFECT
+#ifndef configENABLE_ALTITUDE_KF_GROUND_EFFECT_DETECTION
+#define configENABLE_ALTITUDE_KF_GROUND_EFFECT_DETECTION 0
+#endif
 
 /* Choose whether to use ACC_D for altitude correction (calculated according to attitude) or ACC_Z raw */
-// #define configALTITUDE_KF_USE_ACC_D
+#ifndef configENABLE_ALTITUDE_KF_USE_ACC_D_CORRECTION
+#define configENABLE_ALTITUDE_KF_USE_ACC_D_CORRECTION 0
+#endif
 
 /* Choose whether to use IMU EKF velocity estimation to correct altitude */
-// #define configALTITUDE_KF_USE_VELD_CORRECTION
+#ifndef configENABLE_ALTITUDE_KF_VELD_CORRECTION
+#define configENABLE_ALTITUDE_KF_VELD_CORRECTION 0
+#endif
 
 /* Temperature variation rate with altitude, in K/m */
 #define configALTITUDE_KF_CONST_TEMP_RATE 0.0065f
@@ -210,7 +220,7 @@ void altitudeKF_updateAccel(altitudeState_t* altState, axis3f_t accel, float b_a
  */
 void altitudeKF_updateBaro(altitudeState_t* altState, float press, float dt_s);
 
-#if (configUSE_ALT_TOF != configTOF_DISABLE)
+#if (configALT_TOF_DRIVER != configTOF_DISABLE)
 /**
  * \brief           Altitude Kalman filter update with LIDAR / ToF sensor measurements
  *
@@ -221,7 +231,7 @@ void altitudeKF_updateBaro(altitudeState_t* altState, float press, float dt_s);
 void altitudeKF_updateLIDAR(altitudeState_t* altState, float ToFAlt, float dt_s);
 #endif
 
-#ifdef configALTITUDE_KF_USE_VELD_CORRECTION
+#if configENABLE_ALTITUDE_KF_VELD_CORRECTION
 /**
  * \brief           Altitude Kalman filter update with downward velocity
  *

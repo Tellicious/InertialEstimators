@@ -39,7 +39,7 @@
 #include "numMethods.h"
 #include "string.h"
 
-#if defined(configALTITUDE_KF_ACC_HP_FILTER) || (configUSE_ALT_TOF != configTOF_DISABLE) || defined(configALTITUDE_KF_DETECT_GROUND_EFFECT)
+#if configENABLE_ALTITUDE_KF_ACC_HP_FILTER || (configALT_TOF_DRIVER != configTOF_DISABLE) || configENABLE_ALTITUDE_KF_GROUND_EFFECT_DETECTION
 #include "IIRFilters.h"
 #endif
 
@@ -82,9 +82,9 @@
  */
 
 /* Macros --------------------------------------------------------------------*/
-#if (configUSE_ALT_TOF != configTOF_DISABLE) && defined(configALTITUDE_KF_USE_VELD_CORRECTION)
+#if (configALT_TOF_DRIVER != configTOF_DISABLE) && configENABLE_ALTITUDE_KF_VELD_CORRECTION
 #define configALTITUDE_KF_NMEAS 4
-#elif (configUSE_ALT_TOF != configTOF_DISABLE) || defined(configALTITUDE_KF_USE_VELD_CORRECTION)
+#elif (configALT_TOF_DRIVER != configTOF_DISABLE) || configENABLE_ALTITUDE_KF_VELD_CORRECTION
 #define configALTITUDE_KF_NMEAS 3
 #else
 #define configALTITUDE_KF_NMEAS 2
@@ -94,23 +94,23 @@
 /* Gain matrix */
 static matrix_t K;
 
-#ifdef configALTITUDE_KF_USE_APPROX_ALTITUDE
+#if configENABLE_ALTITUDE_KF_APPROX_ALTITUDE_CALCULATION
 static float _alt0; /* Ground altitude ISA */
 #else
 static float _inv_pressZeroLevel; /* Ground pressure */
 static float _alt_k1;
 static float _alt_kpow; /* Altitude calculation coefficients */
-#endif /* configALTITUDE_KF_USE_APPROX_ALTITUDE */
+#endif /* configENABLE_ALTITUDE_KF_APPROX_ALTITUDE_CALCULATION */
 
-#ifdef configALTITUDE_KF_ACC_HP_FILTER
+#if configENABLE_ALTITUDE_KF_ACC_HP_FILTER
 static IIRFilterGeneric_t HPFilt_accD;
 #endif
 
-#if (configUSE_ALT_TOF != configTOF_DISABLE)
+#if (configALT_TOF_DRIVER != configTOF_DISABLE)
 static IIRFilterDerivative_t LIDAR_diff;
 #endif
 
-#ifdef configALTITUDE_KF_DETECT_GROUND_EFFECT
+#if configENABLE_ALTITUDE_KF_GROUND_EFFECT_DETECTION
 static IIRFilterDerivative_t baro_diff;
 #endif
 
@@ -118,7 +118,7 @@ static IIRFilterDerivative_t baro_diff;
 /* Calculate altitude in m from barometric pressure in hPa */
 static float altitudeCalculation(float pressure) {
 
-#ifdef configALTITUDE_KF_USE_APPROX_ALTITUDE
+#if configENABLE_ALTITUDE_KF_APPROX_ALTITUDE_CALCULATION
     /* Approximated formula with ISA parameters (t_SL = 15°C, QNH = 101325 Pa) */
     int32_t RP;
     int32_t h0;
@@ -227,26 +227,26 @@ static float altitudeCalculation(float pressure) {
 #else
     /* Correct formula */
     return (_alt_k1 * (1.0f - powf((pressure * _inv_pressZeroLevel), _alt_kpow)));
-#endif /* configALTITUDE_KF_USE_APPROX_ALTITUDE */
+#endif /* configENABLE_ALTITUDE_KF_APPROX_ALTITUDE_CALCULATION */
 }
 
 static float altitudeKFAccelDownCalc(axis3f_t accel, float b_az, axis3f_t angles) {
     float accD;
-#if defined(configALTITUDE_KF_USE_ACC_D)
+#if configENABLE_ALTITUDE_KF_USE_ACC_D_CORRECTION
     //transform accel_z into accel_D
     accD = (constG - (accel.x * SIN(angles.y)) + (accel.y * COS(angles.y) * SIN(angles.x)) + ((accel.z - b_az) * COS(angles.y) * COS(angles.x)));
 #else
     accD = (constG + accel.z - b_az);
 #endif
 
-#ifdef configALTITUDE_KF_ACC_HP_FILTER
+#if configENABLE_ALTITUDE_KF_ACC_HP_FILTER
     accD = IIRFilterProcess(&HPFilt_accD, accD);
 #endif
 
     return DEADBAND(accD, configALTITUDE_KF_ACCEL_D_DEADBAND);
 }
 
-#ifdef configALTITUDE_KF_USE_VELD_CORRECTION
+#if configENABLE_ALTITUDE_KF_VELD_CORRECTION
 static float altitudeKFVelDownCalc(axis3f_t vel, axis3f_t angles) {
     float velD;
     //transform vel into vel_D
@@ -260,14 +260,14 @@ static float altitudeKFVelDownCalc(axis3f_t vel, axis3f_t angles) {
 
 void altitudeKF_init(altitudeState_t* altState, float pressGround, float tempGround) {
 /* Initialize support variables for altitude calculation */
-#ifdef configALTITUDE_KF_USE_APPROX_ALTITUDE
+#if configENABLE_ALTITUDE_KF_APPROX_ALTITUDE_CALCULATION
     (void)tempGround;
     _alt0 = altitudeCalculation(pressGround);
 #else
     _inv_pressZeroLevel = 1.0f / pressGround;
     _alt_k1 = tempGround / configALTITUDE_KF_CONST_TEMP_RATE;
     _alt_kpow = (configALTITUDE_KF_CONST_R * configALTITUDE_KF_CONST_TEMP_RATE) / (configALTITUDE_KF_CONST_M * constG);
-#endif /* configALTITUDE_KF_USE_APPROX_ALTITUDE */
+#endif /* configENABLE_ALTITUDE_KF_APPROX_ALTITUDE_CALCULATION */
 
     /* Initialize state */
     altState->RoC = 0;
@@ -279,7 +279,7 @@ void altitudeKF_init(altitudeState_t* altState, float pressGround, float tempGro
     altState->_vAccPred = 0;
 
     /* Initialize downward acceleration high-pass filter */
-#ifdef configALTITUDE_KF_ACC_HP_FILTER
+#if configENABLE_ALTITUDE_KF_ACC_HP_FILTER
     IIRFilterInitHP(&HPFilt_accD, configALTITUDE_KF_ACCEL_HP_FREQ, configALTITUDE_KF_LOOP_TIME_S * 1e3f);
 #endif
 
@@ -330,15 +330,15 @@ void altitudeKF_init(altitudeState_t* altState, float pressGround, float tempGro
     ELEM(R, 0, 0) = configALTITUDE_KF_H_NOISE / configALTITUDE_KF_LOOP_TIME_S;
     ELEM(R, 1, 1) = configALTITUDE_KF_AZ_MEAS_NOISE / configALTITUDE_KF_LOOP_TIME_S;
 
-#if (configUSE_ALT_TOF != configTOF_DISABLE) && defined(configALTITUDE_KF_USE_VELD_CORRECTION)
+#if (configALT_TOF_DRIVER != configTOF_DISABLE) && configENABLE_ALTITUDE_KF_VELD_CORRECTION
     ELEM(C, 2, 1) = 1.0f;
     ELEM(C, 3, 1) = 1.0f;
     ELEM(R, 2, 2) = configALTITUDE_KF_LIDAR_NOISE / configALTITUDE_KF_LOOP_TIME_S;
     ELEM(R, 3, 3) = configALTITUDE_KF_VD_NOISE / configALTITUDE_KF_LOOP_TIME_S;
-#elif (configUSE_ALT_TOF != configTOF_DISABLE)
+#elif (configALT_TOF_DRIVER != configTOF_DISABLE)
     ELEM(C, 2, 1) = 1.0f;
     ELEM(R, 2, 2) = configALTITUDE_KF_LIDAR_NOISE / configALTITUDE_KF_LOOP_TIME_S;
-#elif defined(configALTITUDE_KF_USE_VELD_CORRECTION)
+#elif configENABLE_ALTITUDE_KF_VELD_CORRECTION
     ELEM(C, 2, 1) = 1.0f;
     ELEM(R, 2, 2) = configALTITUDE_KF_VD_NOISE / configALTITUDE_KF_LOOP_TIME_S;
 #endif
@@ -421,7 +421,7 @@ void altitudeKF_updateBaro(altitudeState_t* altState, float press, float dt_s) {
     /* Calculate delta measures, adjusting it for the different update time (approximated) */
     float delta_baroAltitude = (baroAlt - altState->_altPred);
 
-#ifdef configALTITUDE_KF_DETECT_GROUND_EFFECT
+#if configENABLE_ALTITUDE_KF_GROUND_EFFECT_DETECTION
     static uint8_t isDerivativeInitialized = 0U;
     if (!isDerivativeInitialized) {
         /* Initialize derivative calculation for barometer vertical speed estimation */
@@ -445,7 +445,7 @@ void altitudeKF_updateBaro(altitudeState_t* altState, float press, float dt_s) {
 
     /* Apply progressive barometer correction reduction */
     delta_baroAltitude *= (1.0f - (float)groundEffectCounter / (float)configALTITUDE_KF_GND_EFF_COUNT_MAX);
-#endif /* configALTITUDE_KF_DETECT_GROUND_EFFECT */
+#endif /* configENABLE_ALTITUDE_KF_GROUND_EFFECT_DETECTION */
 
     /* Apply correction */
     delta_baroAltitude *= dt_s / configALTITUDE_KF_LOOP_TIME_S; /* Adjust for different update time (approximated) */
@@ -457,7 +457,7 @@ void altitudeKF_updateBaro(altitudeState_t* altState, float press, float dt_s) {
     return;
 }
 
-#if (configUSE_ALT_TOF != configTOF_DISABLE)
+#if (configALT_TOF_DRIVER != configTOF_DISABLE)
 void altitudeKF_updateLIDAR(altitudeState_t* altState, float ToFAlt, float dt_s) {
     static uint8_t isDerivativeInitialized = 0;
     if (!isDerivativeInitialized) {
@@ -480,7 +480,7 @@ void altitudeKF_updateLIDAR(altitudeState_t* altState, float ToFAlt, float dt_s)
 }
 #endif
 
-#ifdef configALTITUDE_KF_USE_VELD_CORRECTION
+#if configENABLE_ALTITUDE_KF_VELD_CORRECTION
 void altitudeKF_updateVelD(altitudeState_t* altState, axis3f_t velocities, axis3f_t angles, float dt_s) {
     float delta_velD = (altitudeKFVelDownCalc(velocities, angles) + altState->_RoCPred) * dt_s / configALTITUDE_KF_LOOP_TIME_S;
     altState->alt -= matrixGet(&K, 0, configALTITUDE_KF_NMEAS - 1) * delta_velD;
@@ -491,17 +491,17 @@ void altitudeKF_updateVelD(altitudeState_t* altState, axis3f_t velocities, axis3
 #endif
 
 void altitudeKF_setGround(float pressGround, float tempGround) {
-#ifdef configALTITUDE_KF_USE_APPROX_ALTITUDE
+#if configENABLE_ALTITUDE_KF_APPROX_ALTITUDE_CALCULATION
     (void)tempGround;
     _alt0 = altitudeCalculation(pressGround);
 #else
     _inv_pressZeroLevel = 1.0f / pressGround;
     _alt_k1 = tempGround / configALTITUDE_KF_CONST_TEMP_RATE;
     _alt_kpow = (configALTITUDE_KF_CONST_R * configALTITUDE_KF_CONST_TEMP_RATE) / (configALTITUDE_KF_CONST_M * constG);
-#endif /* configALTITUDE_KF_USE_APPROX_ALTITUDE */
+#endif /* configENABLE_ALTITUDE_KF_APPROX_ALTITUDE_CALCULATION */
 
 /* Initialize barometer derivative filter */
-#ifdef configALTITUDE_KF_DETECT_GROUND_EFFECT
+#if configENABLE_ALTITUDE_KF_GROUND_EFFECT_DETECTION
     IIRFilterDerivativeReset(&baro_diff);
 #endif
 }
@@ -518,17 +518,17 @@ void altitudeKF_reset(altitudeState_t* altState) {
     altState->_vAccPred = 0;
 
     /* Initialize accelerometer HP filter */
-#ifdef configALTITUDE_KF_ACC_HP_FILTER
+#if configENABLE_ALTITUDE_KF_ACC_HP_FILTER
     IIRFilterReset(&HPFilt_accD);
 #endif
 
     /* Initialize LIDAR derivative filter */
-#if (configUSE_ALT_TOF != configTOF_DISABLE)
+#if (configALT_TOF_DRIVER != configTOF_DISABLE)
     IIRFilterDerivativeReset(&LIDAR_diff);
 #endif
 
 /* Initialize barometer derivative filter */
-#ifdef configALTITUDE_KF_DETECT_GROUND_EFFECT
+#if configENABLE_ALTITUDE_KF_GROUND_EFFECT_DETECTION
     IIRFilterDerivativeReset(&baro_diff);
 #endif
 }
